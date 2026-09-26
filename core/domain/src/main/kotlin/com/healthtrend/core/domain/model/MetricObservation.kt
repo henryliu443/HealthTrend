@@ -25,4 +25,21 @@ object NutritionMetricIds {
     const val PREFIX = "nutrient_"
 
     fun of(nutrientId: String): String = PREFIX + nutrientId
+
+    /** `true` when [metricId] was produced by the nutrition projection rather than entered by hand. */
+    fun matches(metricId: String): Boolean = metricId.startsWith(PREFIX)
 }
+
+/**
+ * The newest observation of a metric plus how many observations it has in total.
+ *
+ * This is a dedicated read model rather than a derived value because computing it from
+ * `observeObservation` would require one range query per metric — precisely the N+1 pattern the
+ * composite `(metric_id, timestamp)` index exists to avoid (AGENTS.md §4.4).
+ */
+data class MetricLatestValue(
+    val metricId: String,
+    val timestampEpochMilli: Long,
+    val value: Double,
+    val sampleCount: Int,
+)

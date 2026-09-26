@@ -5,6 +5,7 @@ import com.healthtrend.core.data.local.dao.MetricObservationDao
 import com.healthtrend.core.data.mapper.toDomain
 import com.healthtrend.core.data.mapper.toEntity
 import com.healthtrend.core.domain.model.MetricDefinition
+import com.healthtrend.core.domain.model.MetricLatestValue
 import com.healthtrend.core.domain.model.MetricObservation
 import com.healthtrend.core.domain.repository.MetricRepository
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +26,25 @@ class MetricRepositoryImpl(
     ): Flow<List<MetricObservation>> =
         observationDao.observeRange(metricId, fromEpochMilli, toEpochMilliExclusive)
             .map { entities -> entities.map { it.toDomain() } }
+
+    override fun observeObservations(
+        fromEpochMilli: Long,
+        toEpochMilliExclusive: Long,
+    ): Flow<List<MetricObservation>> =
+        observationDao.observeRangeAll(fromEpochMilli, toEpochMilliExclusive)
+            .map { entities -> entities.map { it.toDomain() } }
+
+    override fun observeLatestValues(): Flow<List<MetricLatestValue>> =
+        observationDao.observeLatestPerMetric().map { rows ->
+            rows.map { row ->
+                MetricLatestValue(
+                    metricId = row.metricId,
+                    timestampEpochMilli = row.timestamp,
+                    value = row.value,
+                    sampleCount = row.sampleCount,
+                )
+            }
+        }
 
     override suspend fun getDefinition(metricId: String): MetricDefinition? =
         definitionDao.findById(metricId)?.toDomain()

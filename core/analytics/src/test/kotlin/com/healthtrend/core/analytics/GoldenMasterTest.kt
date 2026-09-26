@@ -12,6 +12,8 @@ import com.healthtrend.core.analytics.change.ChangeRates
 import com.healthtrend.core.analytics.correlation.CrossCorrelation
 import com.healthtrend.core.analytics.model.RawDataPoint
 import com.healthtrend.core.analytics.model.TimeSeries
+import com.healthtrend.core.analytics.normalize.NormalizationMode
+import com.healthtrend.core.analytics.normalize.SeriesNormalizer
 import com.healthtrend.core.analytics.smoothing.Ewma
 import com.healthtrend.core.analytics.trend.TrendAnalysis
 import com.healthtrend.core.analytics.window.RollingWindowStats
@@ -201,6 +203,34 @@ class GoldenMasterTest {
                 assertField(sums[index].value, bucket, "sum", "$id[$index]")
                 assertField(means[index].value, bucket, "mean", "$id[$index]")
             }
+        }
+    }
+
+    @Test
+    fun `normalisation matches numpy`() {
+        for (vector in vectors("normalize")) {
+            val id = vector.get("id").asString
+            val mode = when (vector.get("mode").asString) {
+                "z_score" -> NormalizationMode.Z_SCORE
+                "min_max" -> NormalizationMode.MIN_MAX
+                "baseline_100" -> NormalizationMode.BASELINE_100
+                else -> error("$id: unknown normalisation mode")
+            }
+            val expected = vector.getAsJsonObject("expected")
+            val actual = SeriesNormalizer.normalize(vector.series(), mode)
+            actual.available shouldBe expected.get("available").asBoolean
+            if (!actual.available) {
+                expected.getAsJsonArray("values").size() shouldBe 0
+                actual.series.points.size shouldBe 0
+                continue
+            }
+            val values = expected.getAsJsonArray("values")
+            actual.series.points.size shouldBe values.size()
+            values.forEachIndexed { index, element ->
+                assertClose(actual.series.points[index].value, element.asDouble, tolerance, "$id[$index]")
+            }
+            assertField(actual.centre ?: Double.NaN, expected, "centre", id)
+            assertField(actual.scale ?: Double.NaN, expected, "scale", id)
         }
     }
 

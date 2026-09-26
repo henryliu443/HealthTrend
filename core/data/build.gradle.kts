@@ -41,7 +41,9 @@ dependencies {
     api(project(":core:domain"))
     implementation(libs.kotlinx.coroutines.android)
 
-    implementation(libs.room.runtime)
+    // `api`, not `implementation`: `HealthTrendDatabase` is public API of this module and extends
+    // `RoomDatabase`, so every consumer must have Room on its compile classpath to resolve it.
+    api(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 

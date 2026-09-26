@@ -27,6 +27,13 @@ class NutritionRepositoryImpl(
     override fun observeNutrientDefinitions(): Flow<List<NutrientDefinition>> =
         nutrientDao.observeAll().map { entities -> entities.map { it.toDomain() } }
 
+    override suspend fun upsertNutrientDefinitions(definitions: List<NutrientDefinition>) {
+        if (definitions.isEmpty()) return
+        // IGNORE, not REPLACE: an existing definition may have been edited by the user (a renamed
+        // display name, a corrected RDA) and re-registering metadata must not clobber that.
+        nutrientDao.insertAllIfAbsent(definitions.map { it.toEntity() })
+    }
+
     override fun observeFoods(nameQuery: String): Flow<List<FoodItem>> =
         foodDao.observeByName(nameQuery).map { entities -> entities.map { it.toDomain() } }
 

@@ -24,4 +24,7 @@ interface NutrientDefinitionDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIfAbsent(entity: NutrientDefinitionEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAllIfAbsent(entities: List<NutrientDefinitionEntity>)
 }

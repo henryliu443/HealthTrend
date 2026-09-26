@@ -17,6 +17,14 @@ interface NutritionRepository {
 
     fun observeNutrientDefinitions(): Flow<List<NutrientDefinition>>
 
+    /**
+     * Registers nutrient metadata (AGENTS.md §1.2: adding a nutrient is a pure data insert).
+     *
+     * Separate from [upsertFoodWithNutrients] because `food_nutrient_values.nutrient_id` carries a
+     * `RESTRICT` foreign key: the definition must exist before any food may reference it.
+     */
+    suspend fun upsertNutrientDefinitions(definitions: List<NutrientDefinition>)
+
     fun observeFoods(nameQuery: String): Flow<List<FoodItem>>
 
     suspend fun getFoodWithNutrients(foodId: String): FoodWithNutrients?

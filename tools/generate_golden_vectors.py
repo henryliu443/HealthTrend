@@ -179,6 +179,40 @@ def correlation(xs: list[float], ys: list[float]) -> dict:
     }
 
 
+def normalize(values: list[float], mode: str) -> dict:
+    """Mirrors SeriesNormalizer (AGENTS.md 7.3), including the degenerate-case rules.
+
+    A zero spread is *available* and collapses to 0.0 (the same convention DescriptiveStats uses
+    for skewness/kurtosis); an undefined transform reports `available = False` with no values.
+    """
+    x = np.asarray(values, dtype=float)
+    n = x.size
+    if mode == "z_score":
+        if n < 2:
+            return {"available": False, "values": [], "centre": None, "scale": None}
+        mean = float(np.mean(x))
+        sd = float(np.std(x, ddof=1))
+        values_out = [float((v - mean) / sd) if sd > 0.0 else 0.0 for v in x]
+        return {"available": True, "values": values_out, "centre": mean, "scale": sd}
+    if mode == "min_max":
+        if n < 2:
+            return {"available": False, "values": [], "centre": None, "scale": None}
+        low = float(np.min(x))
+        high = float(np.max(x))
+        span = high - low
+        values_out = [float((v - low) / span) if span > 0.0 else 0.0 for v in x]
+        return {"available": True, "values": values_out, "centre": low, "scale": span}
+    if mode == "baseline_100":
+        if n == 0:
+            return {"available": False, "values": [], "centre": None, "scale": None}
+        base = float(x[0])
+        if base == 0.0:
+            return {"available": False, "values": [], "centre": None, "scale": None}
+        values_out = [float(100.0 * v / base) for v in x]
+        return {"available": True, "values": values_out, "centre": base, "scale": base}
+    raise ValueError(f"unknown normalization mode: {mode}")
+
+
 def aggregation_daily(timestamps: list[int], values: list[float]) -> list[dict]:
     buckets: dict[int, list[float]] = {}
     for ts, value in zip(timestamps, values):
@@ -275,6 +309,34 @@ def main() -> None:
         {"kind": "aggregation", "id": "aggregation_intraday",
          "timestamps": intraday_ts, "values": intraday_values,
          "expected": {"points": aggregation_daily(intraday_ts, intraday_values)}},
+
+        {"kind": "normalize", "id": "normalize_zscore_weight_30", "mode": "z_score",
+         "timestamps": days(30), "values": weight_30,
+         "expected": normalize(weight_30, "z_score")},
+        {"kind": "normalize", "id": "normalize_minmax_lab_60", "mode": "min_max",
+         "timestamps": days(60), "values": lab_60,
+         "expected": normalize(lab_60, "min_max")},
+        {"kind": "normalize", "id": "normalize_baseline_weight_30", "mode": "baseline_100",
+         "timestamps": days(30), "values": weight_30,
+         "expected": normalize(weight_30, "baseline_100")},
+        {"kind": "normalize", "id": "normalize_baseline_irregular", "mode": "baseline_100",
+         "timestamps": irregular_ts, "values": irregular_values,
+         "expected": normalize(irregular_values, "baseline_100")},
+        {"kind": "normalize", "id": "normalize_zscore_constant", "mode": "z_score",
+         "timestamps": days(4), "values": [2.0, 2.0, 2.0, 2.0],
+         "expected": normalize([2.0, 2.0, 2.0, 2.0], "z_score")},
+        {"kind": "normalize", "id": "normalize_minmax_constant", "mode": "min_max",
+         "timestamps": days(4), "values": [2.0, 2.0, 2.0, 2.0],
+         "expected": normalize([2.0, 2.0, 2.0, 2.0], "min_max")},
+        {"kind": "normalize", "id": "normalize_zscore_single_point", "mode": "z_score",
+         "timestamps": days(1), "values": [5.0],
+         "expected": normalize([5.0], "z_score")},
+        {"kind": "normalize", "id": "normalize_baseline_zero", "mode": "baseline_100",
+         "timestamps": days(3), "values": [0.0, 3.0, 4.0],
+         "expected": normalize([0.0, 3.0, 4.0], "baseline_100")},
+        {"kind": "normalize", "id": "normalize_baseline_negative", "mode": "baseline_100",
+         "timestamps": days(3), "values": [-2.0, 4.0, -6.0],
+         "expected": normalize([-2.0, 4.0, -6.0], "baseline_100")},
     ]
 
     fixture = {

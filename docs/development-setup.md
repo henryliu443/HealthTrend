@@ -22,13 +22,33 @@ export JAVA_HOME="/opt/homebrew/opt/openjdk@17"
 export PATH="$JAVA_HOME/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 ```
 
-### Gradle JDK (`~/.gradle/gradle.properties`)
+### Gradle JDK
 
-Kept **outside** the repository so the checkout stays portable across machines:
+Two separate mechanisms, deliberately kept apart:
+
+**In the repository** — `gradle/gradle-daemon-jvm.properties` pins the Gradle *daemon* toolchain:
+
+```properties
+toolchainVersion=17
+```
+
+This is the file that actually fixes Android Studio. Studio never passes `-Dorg.gradle.java.home`
+and its bundled JBR is Java 25, which Gradle 8.11.1 rejects with
+*"incompatible with the Gradle JVM version 25"*. Gradle's **daemon JVM criteria take precedence over
+both `org.gradle.java.home` and the launcher JVM**, and Studio's own
+`IncompatibleGradleJvmAndGradleIssueChecker` reads exactly this file — so the criteria file fixes the
+IDE and not just the CLI. It contains only a version number, so it is committed.
+
+**Outside the repository** (`~/.gradle/gradle.properties`) — machine-specific paths only:
 
 ```properties
 org.gradle.java.home=/opt/homebrew/opt/openjdk@17
+# Gradle's toolchain auto-detection does not find Homebrew's openjdk@17 formula:
+org.gradle.java.installations.paths=/opt/homebrew/opt/openjdk@17
 ```
+
+Editing `.idea/gradle.xml` by hand does **not** work: Studio 2026.1's migration sync-listeners
+normalise the `gradleJvm` entry back to `jbr-25`.
 
 ## 2. Android SDK packages
 
@@ -96,15 +116,40 @@ fallbacks, so the build still works from a network that can reach Maven Central 
 
 Robolectric does not use Gradle repositories at all — see section 3.
 
-## 7. Verified deviations from AGENTS.md
+## 7. UI (Phase 3)
+
+Four Compose destinations, wired in `ui/navigation/HealthTrendNavHost.kt`:
+
+| Route | Screen | ViewModel |
+|---|---|---|
+| `dashboard` | `DashboardScreen` | `DashboardViewModel` |
+| `detail/{metricId}` | `MetricDetailScreen` | `MetricDetailViewModel` |
+| `compare` | `CompareScreen` | `CompareViewModel` |
+| `nutrition` | `NutritionScreen` | `NutritionViewModel` |
+
+Each screen is split into a thin `*Screen` (Koin-injected ViewModel) and a stateless `*Content`
+that is what the `@Preview` functions render, so the IDE previews need no Koin graph. The previews
+build their fake data by running the real `:core:analytics` engine over a synthetic series, which
+keeps them from drifting away from what the ViewModel actually produces.
+
+**Review data.** `src/debug` contributes a `DemoDataInstaller` that seeds ~3 months of deterministic
+data; `src/release` contributes a no-op instead. The dashboard's "load demo data" button and the
+automatic seed on first launch both go through the same interface, so the release build has no
+reference to the seeder at all. The seeded foods are flagged `isCustom = true` because their
+nutrient figures are illustrative until the curated offline lexicon lands in Phase 4.
+
+## 8. Verified deviations from AGENTS.md
 
 | # | AGENTS.md | Actual | Reason |
 |---|---|---|---|
 | 1 | §2.1 register JDK 17 via `sudo ln -sfn ...` | `JAVA_HOME` + `org.gradle.java.home` point at Homebrew's `openjdk@17` | `sudo` needs a password; non-interactive automation cannot run it. Equivalent effect, no system directories touched. |
 | 2 | §4.3 `meal_logs` indexed on `timestamp` only | also `food_id` | Room requires FK child columns to be indexed; the warning explicitly advises it. Performance-only, no semantic change. |
 | 3 | §3.2 pins AGP 8.9.0, §2.2 requires compileSdk 36 | `android.suppressUnsupportedCompileSdk=36` in `gradle.properties` | AGP 8.9.0 was only tested up to compileSdk 35. Suppressing keeps the pinned AGP while honouring the required compileSdk. Revisit when AGP is upgraded. |
+| 4 | §2.1 sets the Gradle JVM via `JAVA_HOME` / a JDK symlink | committed `gradle/gradle-daemon-jvm.properties` (`toolchainVersion=17`) plus uncommitted `~/.gradle/gradle.properties` | Gradle 8.11.1 cannot run on Android Studio's bundled JBR 25, and daemon JVM criteria are the only mechanism Studio honours. See section 1. |
+| 5 | §4.4 "query performance via indexes" | the food search filters the lexicon in memory rather than with SQL `LIKE` | The bundled lexicon is a few hundred rows and one read serves both the search box and the diary's food-name lookup. Revisit if the lexicon grows past a few thousand rows. |
+| 6 | §4.2 `FoodItemEntity` has no `maxValue`-style ceiling | `NutrientDefinition.dailyRecommended` is nullable and rendered as `—` when absent | The lexicon does not always quote an RDA; showing a fabricated number would be worse than a dash. |
 
-## 8. Network note
+## 9. Network note
 
 Direct HTTPS to `repo1.maven.org` (Maven Central) is frequently reset on this network, which is why
 section 6 configures mirrors. Robolectric does not use Gradle repositories at all, hence section 3.

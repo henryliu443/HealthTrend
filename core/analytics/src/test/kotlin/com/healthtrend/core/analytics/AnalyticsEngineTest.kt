@@ -10,6 +10,8 @@ import com.healthtrend.core.analytics.correlation.CrossCorrelation
 import com.healthtrend.core.analytics.downsample.LttbDownsampler
 import com.healthtrend.core.analytics.model.RawDataPoint
 import com.healthtrend.core.analytics.model.TimeSeries
+import com.healthtrend.core.analytics.normalize.NormalizationMode
+import com.healthtrend.core.analytics.normalize.SeriesNormalizer
 import com.healthtrend.core.analytics.periodicity.Periodicity
 import com.healthtrend.core.analytics.quality.DataQuality
 import com.healthtrend.core.analytics.smoothing.Ewma
@@ -559,5 +561,63 @@ class LttbDownsamplerTest {
         val downsampled = LttbDownsampler.downsample(series, 50)
         downsampled.points.map { it.timestampEpochMilli } shouldBe
             downsampled.points.map { it.timestampEpochMilli }.sorted()
+    }
+}
+
+class SeriesNormalizerTest {
+
+    @Test
+    fun `z-score output has zero mean and unit sample deviation`() {
+        val normalized = SeriesNormalizer.normalize(daily(20) { 70.0 + it * 0.5 }, NormalizationMode.Z_SCORE)
+        normalized.available shouldBe true
+        val stats = DescriptiveStats.calculate(normalized.series)
+        stats.mean shouldBe (0.0 plusOrMinus 1e-12)
+        stats.sampleStandardDeviation shouldBe (1.0 plusOrMinus 1e-12)
+    }
+
+    @Test
+    fun `min-max output is bounded by zero and one`() {
+        val normalized = SeriesNormalizer.normalize(daily(9) { (it * it).toDouble() }, NormalizationMode.MIN_MAX)
+        normalized.series.points.minOf { it.value } shouldBe 0.0
+        normalized.series.points.maxOf { it.value } shouldBe 1.0
+    }
+
+    @Test
+    fun `baseline 100 anchors the earliest point at one hundred regardless of input order`() {
+        val shuffled = TimeSeries(
+            "s",
+            listOf(RawDataPoint(5 * DAY, 80.0), RawDataPoint(0L, 40.0), RawDataPoint(10 * DAY, 120.0)),
+            "kg",
+        )
+        val normalized = SeriesNormalizer.normalize(shuffled, NormalizationMode.BASELINE_100)
+        normalized.series.points.map { it.value } shouldBe
+            listOf(100.0, 200.0, 300.0)
+        normalized.series.unit shouldBe "index(100)"
+    }
+
+    @Test
+    fun `a zero baseline is reported as unavailable instead of dividing by zero`() {
+        val normalized = SeriesNormalizer.normalize(
+            daily(3) { if (it == 0) 0.0 else 5.0 },
+            NormalizationMode.BASELINE_100,
+        )
+        normalized.available shouldBe false
+        normalized.series.points.size shouldBe 0
+    }
+
+    @Test
+    fun `an empty series is unavailable for every mode`() {
+        val empty = TimeSeries.empty("s", "u")
+        NormalizationMode.entries.forEach { mode ->
+            SeriesNormalizer.normalize(empty, mode).available shouldBe false
+        }
+    }
+
+    @Test
+    fun `normalisation never mutates the input series`() {
+        val original = daily(6) { 60.0 + it }
+        val snapshot = original.points.toList()
+        SeriesNormalizer.normalize(original, NormalizationMode.MIN_MAX)
+        original.points shouldBe snapshot
     }
 }
