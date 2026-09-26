@@ -18,6 +18,7 @@ turbine = "1.2.0"
 junit4 = "4.13.2"
 robolectric = "4.14.1"
 androidx-test-core = "1.6.1"
+gson = "2.11.0"
 
 [libraries]
 kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
@@ -66,6 +67,9 @@ turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine
 junit4 = { group = "junit", name = "junit", version.ref = "junit4" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidx-test-core" }
+
+# Golden-master fixtures (tools/generate_golden_vectors.py) are JSON, parsed in tests only.
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

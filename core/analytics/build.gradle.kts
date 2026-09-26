@@ -17,6 +17,7 @@ dependencies {
     testImplementation(libs.junit.jupiter.api)
     testImplementation(libs.kotest.assertions)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.gson)
     testRuntimeOnly(libs.junit.jupiter.engine)
 }
 

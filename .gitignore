@@ -19,3 +19,8 @@ captures/
 
 # Logs
 *.log
+
+# Python tooling (golden-master vector generation, tools/)
+tools/.venv/
+__pycache__/
+*.pyc
