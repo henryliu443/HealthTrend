@@ -42,3 +42,29 @@ internal val TrendDirection.labelRes: Int
         TrendDirection.STABLE -> R.string.detail_trend_stable
         TrendDirection.INSUFFICIENT_DATA -> R.string.detail_trend_insufficient
     }
+
+/**
+ * The arrow shown alongside [labelRes].
+ *
+ * It is a shape rather than a word so the verdict is legible at a glance before the label is read —
+ * hence the `translatable="false"` strings behind it. [TrendDirection.INSUFFICIENT_DATA] gets a dash
+ * rather than a direction: there is no fitted slope to point anywhere.
+ */
+@get:StringRes
+internal val TrendDirection.glyphRes: Int
+    get() = when (this) {
+        TrendDirection.INCREASING -> R.string.trend_glyph_up
+        TrendDirection.DECREASING -> R.string.trend_glyph_down
+        TrendDirection.STABLE -> R.string.trend_glyph_flat
+        TrendDirection.INSUFFICIENT_DATA -> R.string.trend_glyph_none
+    }
+
+/**
+ * Whether the regression actually reached a verdict.
+ *
+ * [TrendDirection.INCREASING] and [TrendDirection.DECREASING] are the only outcomes that survive the
+ * _p_ < 0.05 test; the other two mean "no conclusion", which is a different claim and must not be
+ * dressed up the same way in the UI.
+ */
+internal val TrendDirection.isEstablished: Boolean
+    get() = this == TrendDirection.INCREASING || this == TrendDirection.DECREASING

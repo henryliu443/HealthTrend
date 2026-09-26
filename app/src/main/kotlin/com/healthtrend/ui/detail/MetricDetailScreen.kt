@@ -21,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -48,6 +47,7 @@ import com.healthtrend.ui.components.ChartLegend
 import com.healthtrend.ui.components.LegendEntry
 import com.healthtrend.ui.components.SectionCard
 import com.healthtrend.ui.components.StatRow
+import com.healthtrend.ui.components.TrendBadge
 import com.healthtrend.ui.format.Formatters
 import com.healthtrend.ui.theme.HealthTrendTheme
 import com.healthtrend.ui.theme.chartColors
@@ -175,7 +175,11 @@ private fun MetricDetailContent(
             }
 
             state.trend?.let { trend ->
-                SectionCard(title = stringResource(R.string.detail_trend_title)) {
+                SectionCard(
+                    title = stringResource(R.string.detail_trend_title),
+                    subtitle = stringResource(R.string.detail_trend_method),
+                    trailing = { TrendBadge(trend.direction) },
+                ) {
                     StatRow(
                         stringResource(R.string.detail_trend_slope),
                         stringResource(
@@ -185,11 +189,6 @@ private fun MetricDetailContent(
                     )
                     StatRow(stringResource(R.string.detail_trend_pvalue), Formatters.pValue(trend.pValue))
                     StatRow(stringResource(R.string.detail_trend_r2), Formatters.value(trend.rSquared))
-                    Text(
-                        text = stringResource(trend.direction.labelRes),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                    )
                     Text(
                         text = stringResource(R.string.detail_trend_note),
                         style = MaterialTheme.typography.labelSmall,

@@ -74,7 +74,8 @@
     <string name="detail_stat_sd">标准差</string>
     <string name="detail_stat_min">最小</string>
     <string name="detail_stat_max">最大</string>
-    <string name="detail_trend_title">趋势（对时间做 OLS 回归）</string>
+    <string name="detail_trend_title">趋势</string>
+    <string name="detail_trend_method">对时间做最小二乘（OLS）回归</string>
     <string name="detail_trend_increasing">上升</string>
     <string name="detail_trend_decreasing">下降</string>
     <string name="detail_trend_stable">平稳</string>
@@ -142,4 +143,10 @@
     <string name="nutrition_delete_meal">删除这条记录</string>
     <string name="nutrition_invalid_amount">请输入大于 0 的数值</string>
     <string name="nutrition_no_food_selected">先在上方选择一个食物</string>
+
+    <!-- Symbols. Not prose, so they stay untranslated. -->
+    <string name="trend_glyph_up" translatable="false">↗</string>
+    <string name="trend_glyph_down" translatable="false">↘</string>
+    <string name="trend_glyph_flat" translatable="false">→</string>
+    <string name="trend_glyph_none" translatable="false">–</string>
 </resources>
