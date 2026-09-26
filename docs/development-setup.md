@@ -135,10 +135,53 @@ keeps them from drifting away from what the ViewModel actually produces.
 **Review data.** `src/debug` contributes a `DemoDataInstaller` that seeds ~3 months of deterministic
 data; `src/release` contributes a no-op instead. The dashboard's "load demo data" button and the
 automatic seed on first launch both go through the same interface, so the release build has no
-reference to the seeder at all. The seeded foods are flagged `isCustom = true` because their
-nutrient figures are illustrative until the curated offline lexicon lands in Phase 4.
+reference to the seeder at all. Since Phase 4 the seeded foods are **adopted through the real lookup
+pipeline** (search → profile → confirm-save), so every nutrient figure in a debug build traces back
+to the same USDA record the bundled lexicon names — and the lookup path itself runs on every fresh
+install.
 
-## 8. Verified deviations from AGENTS.md
+## 8. Food lexicon (AGENTS.md §5.2)
+
+The bundled offline dictionary is **generated, not typed**. Nutrient values typed from memory are
+exactly the kind of thing a health app must not ship, so every figure in it traces back to a
+published record:
+
+```bash
+# Needs the network once (~6 MB, cached in tools/.cache/).
+python3 tools/generate_food_lexicon.py           # resolve and report, write nothing
+python3 tools/generate_food_lexicon.py --emit    # write the generated Kotlin
+python3 tools/generate_food_lexicon.py --refresh # re-download the dataset first
+```
+
+- **Source**: USDA FoodData Central, *SR Legacy* (April 2018) — public domain. It is US-focused, so
+  it covers ingredients (米饭, 鸡胸肉, 豆腐, 西兰花, 三文鱼, 鸡蛋, 全脂牛奶 …) well but prepared
+  dishes not at all; those are what a future remote/branded tier is for.
+- **Curated half**: `tools/food_lexicon_catalog.py` decides which foods ship and what they are called
+  in Chinese. **Machine half**: `tools/generate_food_lexicon.py` resolves each entry to exactly one
+  FDC record and refuses to emit while any pattern is ambiguous, so refreshing the dataset cannot
+  silently swap one food for another.
+- **Output**: `core/data/src/main/kotlin/…/lexicon/BundledFoodLexiconData.kt` — generated, committed,
+  and the only artefact the build needs. Ordinary builds and tests never touch the network.
+- Foods that are naturally counted (鸡蛋, 苹果, 香蕉, 橙子) are emitted **per piece**, with the gram
+  weight taken from FDC's own household measures. That is deliberate: AGENTS.md §1.1's "the reference
+  amount is never assumed to be 100" is then exercised by shipped data, not only by tests.
+
+Two traps the script now defends against, both found while building it:
+
+1. SR Legacy has **two rows named `Energy`** — one in kcal (FDC 1008) and one in kJ (1062). Keying on
+   the name alone picked the kilojoule row and inflated every calorie figure by 4.184×. Nutrients are
+   selected by *(name, unit)*.
+2. Every top-level property initialiser in a Kotlin file compiles into **one `<clinit>`**, and 205
+   foods × ~22 nutrients overflows the JVM's 64 KB per-method limit (`MethodTooLargeException`). The
+   generated file therefore emits one `object` per category, each with its own initialiser.
+
+`NutrientCatalog` (`:core:domain`) is the hand-written other half: 22 nutrients with Chinese names,
+units and reference intakes. Added a nutrient is still a one-row change with no migration
+(AGENTS.md §1.2), and `NutritionLookupRepositoryTest` asserts the catalogue and the lexicon agree in
+both directions — no food names a nutrient the catalogue does not describe, and no catalogue entry is
+dead metadata.
+
+## 9. Verified deviations from AGENTS.md
 
 | # | AGENTS.md | Actual | Reason |
 |---|---|---|---|
@@ -148,8 +191,13 @@ nutrient figures are illustrative until the curated offline lexicon lands in Pha
 | 4 | §2.1 sets the Gradle JVM via `JAVA_HOME` / a JDK symlink | committed `gradle/gradle-daemon-jvm.properties` (`toolchainVersion=17`) plus uncommitted `~/.gradle/gradle.properties` | Gradle 8.11.1 cannot run on Android Studio's bundled JBR 25, and daemon JVM criteria are the only mechanism Studio honours. See section 1. |
 | 5 | §4.4 "query performance via indexes" | the food search filters the lexicon in memory rather than with SQL `LIKE` | The bundled lexicon is a few hundred rows and one read serves both the search box and the diary's food-name lookup. Revisit if the lexicon grows past a few thousand rows. |
 | 6 | §4.2 `FoodItemEntity` has no `maxValue`-style ceiling | `NutrientDefinition.dailyRecommended` is nullable and rendered as `—` when absent | The lexicon does not always quote an RDA; showing a fabricated number would be worse than a dash. |
+| 7 | §5.2 "约 300 种标准中国/国际常见食材" | 205 curated foods | SR Legacy is a US composition table; every food in the lexicon is one whose record could be resolved unambiguously. Padding the count with records that are not the food they claim to be would be worse than a shorter list. |
+| 8 | §5.2 tier 3 "联网公共数据库 / API 扩展（可选插件）" | the plugin point ships and is exercised by a stub provider in tests, but no provider makes a live call | USDA data is already covered *offline* by pre-baking it into the lexicon, which is strictly better for an offline-first app than a runtime call. A live adapter (OpenFoodFacts, branded/barcode lookups) cannot be verified on this network, so it is deferred rather than shipped unverified. |
+| 9 | §5.2 "轻量级 SQLite / 静态预置表" | a compiled Kotlin table | Removes a runtime file/asset lookup that cannot be exercised without a device, and lets JVM tests check the shipped data directly. |
+| 10 | §5.1 `getNutrientProfile(foodRefId: String)` | refs are provider-scoped (`bundled:rice_cooked`) | Two tiers can both know a food called `rice_cooked`; a bare id is ambiguous the moment a second provider exists. The pair is carried as one value so it cannot be split by accident. |
+| 11 | §5.2 "第三优先级 … 第四优先级" as separate tiers | tiers are enumerated (`PERSONAL`, `BUNDLED`, `REMOTE`, `ESTIMATE`) and walked in that order | Making the priority an explicit order on the enum means adding a provider is a Koin registration, not an edit to the pipeline.
 
-## 9. Network note
+## 10. Network note
 
 Direct HTTPS to `repo1.maven.org` (Maven Central) is frequently reset on this network, which is why
 section 6 configures mirrors. Robolectric does not use Gradle repositories at all, hence section 3.

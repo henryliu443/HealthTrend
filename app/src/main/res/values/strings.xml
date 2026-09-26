@@ -122,7 +122,7 @@
     <string name="nutrition_meal_snack">加餐</string>
     <string name="nutrition_search_hint">搜索食物，例如"米饭"</string>
     <string name="nutrition_search_title">食物库</string>
-    <string name="nutrition_search_empty">没有匹配的食物。可以先新建一个自定义食物。</string>
+    <string name="nutrition_search_empty">还没有匹配的食物。输入名称会同时搜索你的食物库和内置词库（约 200 种常见食材），也可以新建一个自定义食物。</string>
     <string name="nutrition_new_food">新建自定义食物</string>
     <string name="nutrition_food_name">食物名称</string>
     <string name="nutrition_reference_amount">参考分量</string>
@@ -135,7 +135,7 @@
     <string name="nutrition_meals_empty">这一天还没有记录</string>
     <string name="nutrition_totals_title">当日摄入合计</string>
     <string name="nutrition_totals_empty">记录一餐后这里会自动汇总（经 metric_observations 投影）</string>
-    <string name="nutrition_totals_rda">参考摄入 %1$s %2$s</string>
+    <string name="nutrition_totals_progress">%1$s / %2$s %3$s</string>
     <string name="nutrition_add_meal_title">记录摄入</string>
     <string name="nutrition_actual_amount">实际摄入量</string>
     <string name="nutrition_estimate_title">预计摄入</string>
@@ -143,6 +143,18 @@
     <string name="nutrition_delete_meal">删除这条记录</string>
     <string name="nutrition_invalid_amount">请输入大于 0 的数值</string>
     <string name="nutrition_no_food_selected">先在上方选择一个食物</string>
+
+    <!-- Nutrition lookup (AGENTS.md §5.2 / §5.3) -->
+    <string name="nutrition_source_personal">我的食物库</string>
+    <string name="nutrition_source_bundled">内置词库</string>
+    <string name="nutrition_source_remote">联网数据库</string>
+    <string name="nutrition_source_estimate">AI 估算</string>
+    <string name="nutrition_resolving">正在获取营养数据…</string>
+    <string name="nutrition_lookup_failed">无法获取该食物的营养数据</string>
+    <string name="nutrition_confirm_title">确认识别结果</string>
+    <string name="nutrition_confirm_note">以下数值来自参考数据库，保存前可自行修改。确认后存入本地，之后离线可用。</string>
+    <string name="nutrition_confirm_source">来源：%1$s · 记录 %2$s</string>
+    <string name="nutrition_confirm_save">确认并保存</string>
 
     <!-- Symbols. Not prose, so they stay untranslated. -->
     <string name="trend_glyph_up" translatable="false">↗</string>

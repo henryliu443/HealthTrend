@@ -44,13 +44,19 @@ import com.healthtrend.core.domain.model.FoodNutrientValue
 import com.healthtrend.core.domain.model.FoodWithNutrients
 import com.healthtrend.core.domain.model.MealLog
 import com.healthtrend.core.domain.model.MealType
-import com.healthtrend.core.domain.model.NutrientCategory
 import com.healthtrend.core.domain.model.NutrientDefinition
+import com.healthtrend.core.domain.nutrition.NutrientCatalog
 import com.healthtrend.core.domain.nutrition.NutrientMath
+import com.healthtrend.core.domain.nutrition.lookup.FoodNutrientProfile
+import com.healthtrend.core.domain.nutrition.lookup.FoodRef
+import com.healthtrend.core.domain.nutrition.lookup.FoodSearchResult
+import com.healthtrend.core.domain.nutrition.lookup.LookupTier
 import com.healthtrend.ui.common.labelRes
+import com.healthtrend.ui.common.needsConfirmation
 import com.healthtrend.ui.components.ChoiceChips
 import com.healthtrend.ui.components.SectionCard
 import com.healthtrend.ui.components.StatRow
+import com.healthtrend.ui.components.StatusPill
 import com.healthtrend.ui.format.Formatters
 import com.healthtrend.ui.theme.HealthTrendTheme
 import org.koin.androidx.compose.koinViewModel
@@ -80,11 +86,13 @@ internal fun NutritionScreen(
         onNextDay = viewModel::showNextDay,
         onToday = viewModel::showToday,
         onQueryChange = viewModel::setQuery,
-        onSelectFood = viewModel::selectFood,
+        onSelectResult = viewModel::selectSearchResult,
         onClearSelection = viewModel::clearSelectedFood,
         onSelectMealType = viewModel::selectMealType,
         onLogFood = viewModel::logSelectedFood,
         onDeleteMeal = viewModel::deleteMeal,
+        onConfirmProfile = viewModel::confirmPendingProfile,
+        onDismissProfile = viewModel::dismissPendingProfile,
         onCreateFood = viewModel::createFood,
         onMessageShown = viewModel::consumeMessage,
         modifier = modifier,
@@ -101,11 +109,13 @@ private fun NutritionContent(
     onNextDay: () -> Unit,
     onToday: () -> Unit,
     onQueryChange: (String) -> Unit,
-    onSelectFood: (String) -> Unit,
+    onSelectResult: (FoodSearchResult) -> Unit,
     onClearSelection: () -> Unit,
     onSelectMealType: (MealType) -> Unit,
     onLogFood: (Double) -> Unit,
     onDeleteMeal: (String) -> Unit,
+    onConfirmProfile: (referenceAmount: Double, nutrients: Map<String, Double>) -> Unit,
+    onDismissProfile: () -> Unit,
     onCreateFood: (name: String, referenceAmount: Double, referenceUnit: String, nutrients: Map<String, Double>) -> Unit,
     onMessageShown: () -> Unit,
     modifier: Modifier = Modifier,
@@ -161,21 +171,28 @@ private fun NutritionContent(
 
             SectionCard(
                 title = stringResource(R.string.nutrition_search_title),
-                subtitle = stringResource(R.string.dashboard_observation_count, state.foods.size),
+                subtitle = stringResource(R.string.dashboard_observation_count, state.searchResults.size),
             ) {
-                if (state.foods.isEmpty()) {
+                if (state.searchResults.isEmpty()) {
                     Text(
                         text = stringResource(R.string.nutrition_search_empty),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 } else {
-                    state.foods.forEach { food ->
-                        FoodRow(
-                            food = food,
-                            isSelected = state.selectedFood?.food?.id == food.id,
-                            onClick = { onSelectFood(food.id) },
+                    state.searchResults.forEach { result ->
+                        SearchResultRow(
+                            result = result,
+                            isSelected = state.selectedFood?.food?.id == result.foodRef.localId,
+                            onClick = { onSelectResult(result) },
                         )
                     }
+                }
+                if (state.isResolving) {
+                    Text(
+                        text = stringResource(R.string.nutrition_resolving),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 OutlinedButton(
                     onClick = { showNewFoodDialog = true },
@@ -229,12 +246,15 @@ private fun NutritionContent(
                 } else {
                     state.totals.forEach { total ->
                         StatRow(
-                            label = stringResource(
-                                R.string.nutrition_totals_rda,
-                                Formatters.value(total.nutrient.dailyRecommended ?: Double.NaN),
-                                total.nutrient.unit,
-                            ),
-                            value = Formatters.valueWithUnit(total.amount, total.nutrient.unit),
+                            label = total.nutrient.name,
+                            value = total.nutrient.dailyRecommended?.let { reference ->
+                                stringResource(
+                                    R.string.nutrition_totals_progress,
+                                    Formatters.value(total.amount),
+                                    Formatters.value(reference),
+                                    total.nutrient.unit,
+                                )
+                            } ?: Formatters.valueWithUnit(total.amount, total.nutrient.unit),
                         )
                     }
                 }
@@ -282,6 +302,130 @@ private fun NutritionContent(
             },
         )
     }
+
+    state.pendingProfile?.let { profile ->
+        ConfirmProfileDialog(
+            profile = profile,
+            nutrients = state.profileNutrients,
+            onDismiss = onDismissProfile,
+            onConfirm = onConfirmProfile,
+        )
+    }
+}
+
+/**
+ * The confirmation step of AGENTS.md §5.3: a profile fetched from outside is shown — with its source
+ * named and every figure editable — before anything is written.
+ *
+ * The edits live here rather than in the ViewModel so that twenty-two text fields do not become
+ * twenty-two pieces of screen state. Only the parsed numbers leave the dialog.
+ */
+@Composable
+private fun ConfirmProfileDialog(
+    profile: FoodNutrientProfile,
+    nutrients: List<NutrientDefinition>,
+    onDismiss: () -> Unit,
+    onConfirm: (referenceAmount: Double, nutrients: Map<String, Double>) -> Unit,
+) {
+    val key = profile.foodRef.raw
+    var referenceText by remember(key) { mutableStateOf(Formatters.value(profile.referenceAmount)) }
+    var amounts by remember(key) {
+        mutableStateOf(profile.nutrients.mapValues { (_, value) -> Formatters.value(value) })
+    }
+    val byId = remember(nutrients) { nutrients.associateBy { it.id } }
+    // Listed in the catalogue's own order, and only for nutrients the source actually reports: an
+    // empty field would be indistinguishable from a measured zero.
+    val listed = remember(profile, nutrients) {
+        profile.nutrients.keys.sortedBy { byId[it]?.displayOrder ?: Int.MAX_VALUE }
+    }
+
+    val parsedReference = referenceText.trim().replace(',', '.').toDoubleOrNull()
+    val parsedAmounts = amounts.mapValues { (_, raw) ->
+        raw.trim().replace(',', '.').toDoubleOrNull() ?: 0.0
+    }
+    val isValid = parsedReference != null && parsedReference > 0.0 &&
+        parsedAmounts.values.any { it > 0.0 }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.nutrition_confirm_title)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 460.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(profile.foodName, style = MaterialTheme.typography.titleMedium)
+                profile.sourceName?.let { source ->
+                    Text(
+                        text = stringResource(
+                            R.string.nutrition_confirm_source,
+                            source,
+                            profile.sourceRecordId.orEmpty(),
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.nutrition_confirm_note),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = referenceText,
+                    onValueChange = { referenceText = it },
+                    label = {
+                        Text(
+                            stringResource(R.string.nutrition_reference_amount) +
+                                " (" + profile.referenceUnit + ")",
+                        )
+                    },
+                    isError = referenceText.isNotBlank() &&
+                        (parsedReference == null || parsedReference <= 0.0),
+                    supportingText = {
+                        if (referenceText.isNotBlank() &&
+                            (parsedReference == null || parsedReference <= 0.0)
+                        ) {
+                            Text(stringResource(R.string.nutrition_invalid_amount))
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                )
+                listed.forEach { nutrientId ->
+                    val nutrient = byId[nutrientId]
+                    OutlinedTextField(
+                        value = amounts[nutrientId].orEmpty(),
+                        onValueChange = { input -> amounts = amounts + (nutrientId to input) },
+                        label = {
+                            Text(
+                                stringResource(
+                                    R.string.nutrition_nutrient_per_reference,
+                                    nutrient?.name ?: nutrientId,
+                                    nutrient?.unit.orEmpty(),
+                                ),
+                            )
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = isValid,
+                onClick = { onConfirm(parsedReference ?: 0.0, parsedAmounts) },
+            ) {
+                Text(stringResource(R.string.nutrition_confirm_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
 }
 
 @Composable
@@ -323,8 +467,8 @@ private fun DayNavigator(
 }
 
 @Composable
-private fun FoodRow(
-    food: FoodItem,
+private fun SearchResultRow(
+    result: FoodSearchResult,
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -334,20 +478,48 @@ private fun FoodRow(
             .clickable(onClick = onClick)
             .padding(vertical = 6.dp),
     ) {
-        Text(
-            text = food.name,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = result.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                modifier = Modifier.weight(1f),
+            )
+            SourceBadge(result.tier)
+        }
         Text(
             text = stringResource(
                 R.string.nutrition_reference_line,
-                Formatters.value(food.referenceAmount),
-                food.referenceUnit,
+                Formatters.value(result.defaultReferenceAmount),
+                result.defaultReferenceUnit,
             ),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * Where a search hit came from (AGENTS.md §5.2).
+ *
+ * A hit that needs confirming is the filled variant, because that is the one the user has not seen
+ * before and is about to be asked about; their own foods are the quiet default.
+ */
+@Composable
+private fun SourceBadge(tier: LookupTier) {
+    StatusPill(filled = tier.needsConfirmation) {
+        Text(
+            text = stringResource(tier.labelRes),
+            style = MaterialTheme.typography.labelSmall,
         )
     }
 }
@@ -564,11 +736,31 @@ private fun NewFoodDialog(
 
 // --------------------------------------------------------------------------- previews
 
-private fun previewNutrients(): List<NutrientDefinition> = listOf(
-    NutrientDefinition("calories", "能量", "kcal", NutrientCategory.MACRO, 2000.0, 10),
-    NutrientDefinition("protein", "蛋白质", "g", NutrientCategory.MACRO, 60.0, 20),
-    NutrientDefinition("fat", "脂肪", "g", NutrientCategory.MACRO, 60.0, 30),
-    NutrientDefinition("carbohydrate", "碳水化合物", "g", NutrientCategory.MACRO, 300.0, 40),
+private fun previewSearchResults(): List<FoodSearchResult> = listOf(
+    FoodSearchResult(
+        foodRef = FoodRef.of("saved", "demo-egg"),
+        tier = LookupTier.PERSONAL,
+        name = "鸡蛋",
+        brand = null,
+        defaultReferenceAmount = 1.0,
+        defaultReferenceUnit = "piece",
+    ),
+    FoodSearchResult(
+        foodRef = FoodRef.of("bundled", "rice_cooked"),
+        tier = LookupTier.BUNDLED,
+        name = "米饭（熟）",
+        brand = null,
+        defaultReferenceAmount = 100.0,
+        defaultReferenceUnit = "g",
+    ),
+    FoodSearchResult(
+        foodRef = FoodRef.of("bundled", "broccoli_raw"),
+        tier = LookupTier.BUNDLED,
+        name = "西兰花",
+        brand = null,
+        defaultReferenceAmount = 100.0,
+        defaultReferenceUnit = "g",
+    ),
 )
 
 private fun previewFood(): FoodWithNutrients = FoodWithNutrients(
@@ -577,18 +769,36 @@ private fun previewFood(): FoodWithNutrients = FoodWithNutrients(
         name = "米饭（熟）",
         referenceAmount = 100.0,
         referenceUnit = "g",
-        isCustom = true,
+        isCustom = false,
     ),
     nutrients = listOf(
-        FoodNutrientValue("demo-rice", "calories", 116.0),
-        FoodNutrientValue("demo-rice", "protein", 2.6),
-        FoodNutrientValue("demo-rice", "carbohydrate", 25.9),
+        FoodNutrientValue("demo-rice", "calories", 130.0),
+        FoodNutrientValue("demo-rice", "protein", 2.69),
+        FoodNutrientValue("demo-rice", "carbohydrates", 28.17),
+        FoodNutrientValue("demo-rice", "fat", 0.28),
     ),
+)
+
+/** A profile in exactly the shape the bundled lexicon produces, for the confirmation sheet. */
+private fun previewProfile(): FoodNutrientProfile = FoodNutrientProfile(
+    foodRef = FoodRef.of("bundled", "egg_whole_raw"),
+    tier = LookupTier.BUNDLED,
+    foodName = "鸡蛋（1 个，约 50 g）",
+    brand = null,
+    referenceAmount = 50.0,
+    referenceUnit = "piece",
+    nutrients = mapOf(
+        "calories" to 71.5,
+        "protein" to 6.28,
+        "fat" to 4.76,
+        "carbohydrates" to 0.36,
+    ),
+    sourceName = "USDA FoodData Central · SR Legacy",
+    sourceRecordId = "FDC 171287",
 )
 
 private fun previewNutritionState(zoneId: ZoneId): NutritionUiState {
     val dayStart = TimeKeys.startOfDayUtcMillis(Instant.parse("2026-06-18T06:00:00Z").toEpochMilli(), zoneId)
-    val nutrients = previewNutrients()
     val rice = previewFood().food
     val egg = FoodItem(
         id = "demo-egg",
@@ -601,11 +811,12 @@ private fun previewNutritionState(zoneId: ZoneId): NutritionUiState {
         isLoading = false,
         dayStartEpochMilli = dayStart,
         isToday = true,
-        query = "",
-        foods = listOf(rice, egg),
+        query = "米饭",
+        searchResults = previewSearchResults(),
         selectedFood = previewFood(),
         mealType = MealType.LUNCH,
-        nutrients = nutrients,
+        nutrients = NutrientCatalog.ALL,
+        profileNutrients = NutrientCatalog.ALL,
         meals = listOf(
             MealRow(
                 meal = MealLog(
@@ -631,9 +842,11 @@ private fun previewNutritionState(zoneId: ZoneId): NutritionUiState {
             ),
         ),
         totals = listOf(
-            DayNutrientTotal(nutrients[0], 348.0),
-            DayNutrientTotal(nutrients[1], 18.8),
-            DayNutrientTotal(nutrients[2], 46.6),
+            DayNutrientTotal(NutrientCatalog.byId.getValue("calories"), 512.0),
+            DayNutrientTotal(NutrientCatalog.byId.getValue("protein"), 18.8),
+            DayNutrientTotal(NutrientCatalog.byId.getValue("fat"), 12.4),
+            DayNutrientTotal(NutrientCatalog.byId.getValue("carbohydrates"), 46.6),
+            DayNutrientTotal(NutrientCatalog.byId.getValue("sodium"), 1480.0),
         ),
         messageRes = null,
     )
@@ -653,11 +866,41 @@ private fun NutritionPreview() {
             onNextDay = {},
             onToday = {},
             onQueryChange = {},
-            onSelectFood = {},
+            onSelectResult = {},
             onClearSelection = {},
             onSelectMealType = {},
             onLogFood = {},
             onDeleteMeal = {},
+            onConfirmProfile = { _, _ -> },
+            onDismissProfile = {},
+            onCreateFood = { _, _, _, _ -> },
+            onMessageShown = {},
+        )
+    }
+}
+
+/** The AGENTS.md §5.3 confirmation sheet — the new step in this phase. */
+@Preview(name = "Nutrition · confirm lookup", showBackground = true, heightDp = 900)
+@Composable
+private fun NutritionConfirmPreview() {
+    val zoneId = ZoneId.of("Asia/Shanghai")
+    val base = remember { previewNutritionState(zoneId) }
+    HealthTrendTheme(darkTheme = false) {
+        NutritionContent(
+            state = base.copy(pendingProfile = previewProfile()),
+            zoneId = zoneId,
+            onBack = {},
+            onPreviousDay = {},
+            onNextDay = {},
+            onToday = {},
+            onQueryChange = {},
+            onSelectResult = {},
+            onClearSelection = {},
+            onSelectMealType = {},
+            onLogFood = {},
+            onDeleteMeal = {},
+            onConfirmProfile = { _, _ -> },
+            onDismissProfile = {},
             onCreateFood = { _, _, _, _ -> },
             onMessageShown = {},
         )
@@ -673,8 +916,8 @@ private fun NutritionEmptyPreview() {
                 isLoading = false,
                 dayStartEpochMilli = Instant.parse("2026-06-18T00:00:00Z").toEpochMilli(),
                 isToday = false,
-                foods = emptyList(),
-                nutrients = previewNutrients(),
+                nutrients = NutrientCatalog.ALL,
+                profileNutrients = NutrientCatalog.ALL,
             ),
             zoneId = ZoneId.of("Asia/Shanghai"),
             onBack = {},
@@ -682,11 +925,13 @@ private fun NutritionEmptyPreview() {
             onNextDay = {},
             onToday = {},
             onQueryChange = {},
-            onSelectFood = {},
+            onSelectResult = {},
             onClearSelection = {},
             onSelectMealType = {},
             onLogFood = {},
             onDeleteMeal = {},
+            onConfirmProfile = { _, _ -> },
+            onDismissProfile = {},
             onCreateFood = { _, _, _, _ -> },
             onMessageShown = {},
         )

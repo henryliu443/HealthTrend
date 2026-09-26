@@ -2,16 +2,15 @@ package com.healthtrend.demo
 
 import com.healthtrend.core.common.time.TimeKeys
 import com.healthtrend.core.domain.model.FoodItem
-import com.healthtrend.core.domain.model.FoodNutrientValue
 import com.healthtrend.core.domain.model.MealLog
 import com.healthtrend.core.domain.model.MealType
 import com.healthtrend.core.domain.model.MetricCategory
 import com.healthtrend.core.domain.model.MetricDataType
 import com.healthtrend.core.domain.model.MetricDefinition
 import com.healthtrend.core.domain.model.MetricObservation
-import com.healthtrend.core.domain.model.NutrientCategory
-import com.healthtrend.core.domain.model.NutrientDefinition
 import com.healthtrend.core.domain.model.ObservationSource
+import com.healthtrend.core.domain.nutrition.lookup.LookupTier
+import com.healthtrend.core.domain.nutrition.lookup.NutritionLookupRepository
 import com.healthtrend.core.domain.repository.MetricRepository
 import com.healthtrend.core.domain.repository.NutritionRepository
 import kotlinx.coroutines.CoroutineScope
@@ -33,7 +32,12 @@ import kotlin.random.Random
  */
 val demoModule: Module = module {
     single<DemoDataInstaller> {
-        DemoDataSeeder(metricRepository = get(), nutritionRepository = get(), zoneId = get())
+        DemoDataSeeder(
+            metricRepository = get(),
+            nutritionRepository = get(),
+            lookupRepository = get(),
+            zoneId = get(),
+        )
     }
 }
 
@@ -46,19 +50,19 @@ fun seedIfEmptyOnStart(scope: CoroutineScope) {
 /**
  * Fills an empty database with roughly three months of reviewable data.
  *
- * WHY THIS EXISTS: every screen in Phase 3 is a data visualisation, and an empty database renders as
- * an empty screen — which makes the UI impossible to review. The data is **deterministic** (fixed
- * [Random] seed, offsets computed from "today"), so a screenshot taken today and one taken tomorrow
- * differ only in the day they end on.
+ * WHY THIS EXISTS: every screen is a data visualisation, and an empty database renders as an empty
+ * screen — which makes the UI impossible to review. The data is **deterministic** (fixed [Random]
+ * seed, offsets computed from "today"), so a screenshot taken today and one taken tomorrow differ
+ * only in the day they end on.
  *
- * HONESTY NOTE (AGENTS.md §5.3): the nutrient values below are illustrative reference figures, which
- * is why every seeded food is flagged `isCustom = true`. The verified, curated offline lexicon is
- * Phase 4 work; until then the UI's "review before saving" step is what keeps these numbers explicit
- * rather than silently authoritative.
+ * The foods are *not* invented: they are adopted through the same lookup pipeline the UI uses
+ * (AGENTS.md §5.2 search → §5.3 save), so every nutrient figure in a debug build traces back to the
+ * USDA record recorded in the bundled lexicon, and the pipeline itself runs on every fresh install.
  */
 class DemoDataSeeder(
     private val metricRepository: MetricRepository,
     private val nutritionRepository: NutritionRepository,
+    private val lookupRepository: NutritionLookupRepository,
     private val zoneId: ZoneId,
     private val nowMillis: () -> Long = System::currentTimeMillis,
     private val random: Random = Random(20260101),
@@ -69,69 +73,49 @@ class DemoDataSeeder(
         if (metricRepository.observeDefinitions().first().isNotEmpty()) return
 
         val today = TimeKeys.startOfDayUtcMillis(nowMillis(), zoneId)
-        seedNutrients()
-        val foods = seedFoods()
+        lookupRepository.registerBundledNutrients()
+        val foods = adoptFoods()
         seedMeals(today, foods)
         seedMetricSeries(today)
     }
 
-    // ------------------------------------------------------------------ nutrients
-
-    private suspend fun seedNutrients() {
-        nutritionRepository.upsertNutrientDefinitions(
-            NUTRIENT_SEEDS.map { seed ->
-                NutrientDefinition(
-                    id = seed.id,
-                    name = seed.name,
-                    unit = seed.unit,
-                    category = seed.category,
-                    dailyRecommended = seed.dailyRecommended,
-                    displayOrder = seed.displayOrder,
-                )
-            },
-        )
-    }
-
     // ------------------------------------------------------------------ foods
 
-    private suspend fun seedFoods(): Map<String, FoodSeed> {
-        FOOD_SEEDS.forEach { seed ->
-            nutritionRepository.upsertFoodWithNutrients(
-                food = FoodItem(
-                    id = seed.id,
-                    name = seed.name,
-                    referenceAmount = seed.referenceAmount,
-                    referenceUnit = seed.referenceUnit,
-                    // Illustrative reference values, so they are marked as user-created entries
-                    // rather than as the curated bundled lexicon (see the class KDoc).
-                    isCustom = true,
-                ),
-                nutrients = seed.nutrients.map { (nutrientId, amount) ->
-                    FoodNutrientValue(
-                        foodId = seed.id,
-                        nutrientId = nutrientId,
-                        amountPerReference = amount,
-                    )
-                },
-            )
+    /**
+     * Adopts the demo's foods from the bundled lexicon.
+     *
+     * Each name is put through the real search, so this also exercises tier ordering and ranking: the
+     * first bundled hit for 鸡蛋 must be the whole egg and not 鸡蛋面. The map is keyed by the saved
+     * food's id, which for a bundled food is its stable catalogue slug (see
+     * `NutritionLookupRepositoryImpl.foodIdFor`), so [MEAL_SEEDS] can name foods directly.
+     */
+    private suspend fun adoptFoods(): Map<String, FoodItem> {
+        val adopted = mutableMapOf<String, FoodItem>()
+        for (search in FOOD_SEARCHES) {
+            val hit = lookupRepository.search(search).firstOrNull { it.tier == LookupTier.BUNDLED }
+                ?: continue
+            val profile = lookupRepository.profile(hit).getOrNull() ?: continue
+            val saved = lookupRepository.save(profile, isCustom = false).getOrNull() ?: continue
+            adopted[saved.food.id] = saved.food
         }
-        return FOOD_SEEDS.associateBy { it.id }
+        return adopted
     }
 
     // ------------------------------------------------------------------ meals
 
     /**
-     * A plausible four-day food diary. Logging these through [NutritionRepository.logMeal] exercises
-     * the automatic projection (AGENTS.md §4.3), so the `nutrient_*` metric definitions and their
-     * daily aggregates appear on the dashboard as a side effect of eating — which is exactly the
-     * pipeline the spec describes.
+     * A plausible four-day food diary. Logging these through the repository exercises the automatic
+     * projection (AGENTS.md §4.3), so the `nutrient_*` metric definitions and their daily aggregates
+     * appear on the dashboard as a side effect of eating — which is exactly the pipeline the spec
+     * describes.
      */
-    private suspend fun seedMeals(todayStartEpochMilli: Long, foods: Map<String, FoodSeed>) {
+    private suspend fun seedMeals(todayStartEpochMilli: Long, foods: Map<String, FoodItem>) {
         MEAL_SEEDS.forEach { seed ->
+            val food = foods[seed.foodId] ?: return@forEach
             nutritionRepository.logMeal(
                 MealLog(
                     id = "demo-meal-${seed.daysAgo}-${seed.hour}-${seed.minute}-${seed.foodId}",
-                    foodId = foods.getValue(seed.foodId).id,
+                    foodId = food.id,
                     timestampEpochMilli = todayStartEpochMilli -
                         seed.daysAgo * TimeKeys.MILLIS_PER_DAY +
                         seed.hour * 3_600_000L +
@@ -312,28 +296,12 @@ class DemoDataSeeder(
         observations[index] = day to Math.round((value + delta) * 10.0) / 10.0
     }
 
-    private data class NutrientSeed(
-        val id: String,
-        val name: String,
-        val unit: String,
-        val category: NutrientCategory,
-        val dailyRecommended: Double,
-        val displayOrder: Int,
-    )
-
-    private data class FoodSeed(
-        val id: String,
-        val name: String,
-        val referenceAmount: Double,
-        val referenceUnit: String,
-        val nutrients: Map<String, Double>,
-    )
-
     private data class MealSeed(
         val daysAgo: Int,
         val hour: Int,
         val minute: Int,
         val mealType: MealType,
+        /** A bundled-lexicon catalogue slug, which is also the saved food's id. */
         val foodId: String,
         val amount: Double,
         val unit: String,
@@ -362,101 +330,54 @@ class DemoDataSeeder(
         /** `[decimals]` -> multiplier. */
         val ROUNDING_FACTORS = doubleArrayOf(1.0, 10.0, 100.0)
 
-        val NUTRIENT_SEEDS = listOf(
-            NutrientSeed("calories", "能量", "kcal", NutrientCategory.MACRO, 2000.0, 10),
-            NutrientSeed("protein", "蛋白质", "g", NutrientCategory.MACRO, 60.0, 20),
-            NutrientSeed("carbohydrates", "碳水化合物", "g", NutrientCategory.MACRO, 275.0, 30),
-            NutrientSeed("fat", "脂肪", "g", NutrientCategory.MACRO, 60.0, 40),
-            NutrientSeed("fiber", "膳食纤维", "g", NutrientCategory.MACRO, 25.0, 50),
-            NutrientSeed("sodium", "钠", "mg", NutrientCategory.MINERAL, 2000.0, 60),
-            NutrientSeed("potassium", "钾", "mg", NutrientCategory.MINERAL, 2000.0, 70),
-            NutrientSeed("calcium", "钙", "mg", NutrientCategory.MINERAL, 800.0, 80),
-            NutrientSeed("vitamin_c", "维生素 C", "mg", NutrientCategory.VITAMIN, 100.0, 90),
-        )
-
         /**
-         * `referenceAmount`/`referenceUnit` are deliberately heterogeneous (100 g, 100 ml, 1 piece)
-         * so that AGENTS.md §1.1's rule — never divide by a hard-coded 100 — is exercised by the demo
-         * data and not only by the unit tests.
+         * Search terms for the foods the diary uses. Each must resolve to the intended lexicon
+         * entry as its first bundled hit — see [adoptFoods].
          */
-        val FOOD_SEEDS = listOf(
-            FoodSeed("rice_cooked", "米饭（熟）", 100.0, "g", mapOf(
-                "calories" to 116.0, "protein" to 2.6, "carbohydrates" to 25.9, "fat" to 0.3,
-                "sodium" to 2.0)),
-            FoodSeed("milk_whole", "全脂牛奶", 100.0, "ml", mapOf(
-                "calories" to 61.0, "protein" to 3.2, "carbohydrates" to 4.8, "fat" to 3.3,
-                "calcium" to 113.0)),
-            FoodSeed("egg", "鸡蛋", 1.0, "piece", mapOf(
-                "calories" to 72.0, "protein" to 6.3, "carbohydrates" to 0.4, "fat" to 5.0,
-                "calcium" to 28.0)),
-            FoodSeed("chicken_breast", "鸡胸肉（生）", 100.0, "g", mapOf(
-                "calories" to 133.0, "protein" to 24.6, "carbohydrates" to 0.6, "fat" to 3.2,
-                "sodium" to 74.0)),
-            FoodSeed("oats_dry", "燕麦片（干）", 100.0, "g", mapOf(
-                "calories" to 367.0, "protein" to 12.4, "carbohydrates" to 61.0, "fat" to 6.7,
-                "fiber" to 7.0, "calcium" to 54.0, "potassium" to 429.0)),
-            FoodSeed("broccoli", "西兰花", 100.0, "g", mapOf(
-                "calories" to 34.0, "protein" to 2.8, "carbohydrates" to 6.6, "fat" to 0.4,
-                "fiber" to 2.6, "vitamin_c" to 51.0, "potassium" to 316.0, "calcium" to 47.0)),
-            FoodSeed("apple", "苹果", 1.0, "piece", mapOf(
-                "calories" to 104.0, "protein" to 0.5, "carbohydrates" to 27.6, "fat" to 0.3,
-                "fiber" to 4.8, "vitamin_c" to 9.2, "potassium" to 214.0)),
-            FoodSeed("banana", "香蕉", 1.0, "piece", mapOf(
-                "calories" to 107.0, "protein" to 1.3, "carbohydrates" to 27.4, "fat" to 0.4,
-                "fiber" to 3.1, "potassium" to 430.0, "vitamin_c" to 10.4)),
-            FoodSeed("olive_oil", "橄榄油", 100.0, "ml", mapOf("calories" to 884.0, "fat" to 100.0)),
-            FoodSeed("tofu_firm", "豆腐（北豆腐）", 100.0, "g", mapOf(
-                "calories" to 98.0, "protein" to 12.2, "carbohydrates" to 2.0, "fat" to 4.8,
-                "calcium" to 138.0, "sodium" to 7.0)),
-            FoodSeed("salmon", "三文鱼", 100.0, "g", mapOf(
-                "calories" to 208.0, "protein" to 20.4, "carbohydrates" to 0.0, "fat" to 13.4,
-                "sodium" to 59.0, "potassium" to 363.0)),
-            FoodSeed("sweet_potato", "红薯", 100.0, "g", mapOf(
-                "calories" to 86.0, "protein" to 1.6, "carbohydrates" to 20.1, "fat" to 0.1,
-                "fiber" to 3.0, "vitamin_c" to 2.4, "potassium" to 337.0)),
-            FoodSeed("brown_rice_cooked", "糙米饭（熟）", 100.0, "g", mapOf(
-                "calories" to 112.0, "protein" to 2.6, "carbohydrates" to 23.5, "fat" to 0.9,
-                "fiber" to 1.8)),
-            FoodSeed("tomato", "番茄", 100.0, "g", mapOf(
-                "calories" to 18.0, "protein" to 0.9, "carbohydrates" to 3.9, "fat" to 0.2,
-                "fiber" to 1.2, "vitamin_c" to 14.0, "potassium" to 237.0)),
+        val FOOD_SEARCHES = listOf(
+            "米饭（熟）", "糙米饭（熟）", "燕麦片", "全麦面包", "全脂牛奶", "鸡蛋", "鸡胸肉",
+            "西兰花", "菠菜", "大白菜", "番茄", "三文鱼", "虾（生）", "牛西冷", "豆腐（北豆腐",
+            "红薯（烤", "毛豆", "苹果", "香蕉", "橄榄油",
         )
 
         val MEAL_SEEDS = listOf(
             MealSeed(0, 7, 30, MealType.BREAKFAST, "oats_dry", 60.0, "g"),
-            MealSeed(0, 7, 30, MealType.BREAKFAST, "milk_whole", 250.0, "ml"),
-            MealSeed(0, 7, 35, MealType.BREAKFAST, "egg", 1.0, "piece"),
+            MealSeed(0, 7, 30, MealType.BREAKFAST, "milk_whole", 250.0, "g"),
+            MealSeed(0, 7, 35, MealType.BREAKFAST, "egg_whole_raw", 1.0, "piece"),
             MealSeed(0, 12, 30, MealType.LUNCH, "rice_cooked", 200.0, "g"),
-            MealSeed(0, 12, 30, MealType.LUNCH, "chicken_breast", 150.0, "g"),
-            MealSeed(0, 12, 35, MealType.LUNCH, "broccoli", 150.0, "g"),
+            MealSeed(0, 12, 30, MealType.LUNCH, "chicken_breast_raw", 150.0, "g"),
+            MealSeed(0, 12, 35, MealType.LUNCH, "broccoli_raw", 150.0, "g"),
             MealSeed(0, 19, 0, MealType.DINNER, "rice_cooked", 150.0, "g"),
-            MealSeed(0, 19, 0, MealType.DINNER, "salmon", 120.0, "g"),
-            MealSeed(0, 19, 5, MealType.DINNER, "tomato", 100.0, "g"),
-            MealSeed(0, 16, 0, MealType.SNACK, "apple", 1.0, "piece"),
+            MealSeed(0, 19, 0, MealType.DINNER, "salmon_atlantic_farmed_raw", 120.0, "g"),
+            MealSeed(0, 19, 5, MealType.DINNER, "tomato_raw", 100.0, "g"),
+            MealSeed(0, 16, 0, MealType.SNACK, "apple_raw", 1.0, "piece"),
 
             MealSeed(1, 8, 0, MealType.BREAKFAST, "oats_dry", 50.0, "g"),
-            MealSeed(1, 8, 0, MealType.BREAKFAST, "milk_whole", 200.0, "ml"),
-            MealSeed(1, 12, 45, MealType.LUNCH, "brown_rice_cooked", 220.0, "g"),
+            MealSeed(1, 8, 0, MealType.BREAKFAST, "milk_whole", 200.0, "g"),
+            MealSeed(1, 12, 45, MealType.LUNCH, "rice_brown_cooked", 220.0, "g"),
             MealSeed(1, 12, 45, MealType.LUNCH, "tofu_firm", 180.0, "g"),
-            MealSeed(1, 19, 15, MealType.DINNER, "sweet_potato", 200.0, "g"),
-            MealSeed(1, 19, 15, MealType.DINNER, "chicken_breast", 130.0, "g"),
-            MealSeed(1, 16, 30, MealType.SNACK, "banana", 1.0, "piece"),
+            MealSeed(1, 12, 50, MealType.LUNCH, "cabbage_napa_raw", 150.0, "g"),
+            MealSeed(1, 19, 15, MealType.DINNER, "sweet_potato_baked", 200.0, "g"),
+            MealSeed(1, 19, 15, MealType.DINNER, "chicken_breast_raw", 130.0, "g"),
+            MealSeed(1, 16, 30, MealType.SNACK, "banana_raw", 1.0, "piece"),
 
-            MealSeed(2, 7, 45, MealType.BREAKFAST, "egg", 2.0, "piece"),
-            MealSeed(2, 7, 45, MealType.BREAKFAST, "milk_whole", 200.0, "ml"),
+            MealSeed(2, 7, 45, MealType.BREAKFAST, "egg_whole_raw", 2.0, "piece"),
+            MealSeed(2, 7, 45, MealType.BREAKFAST, "milk_whole", 200.0, "g"),
             MealSeed(2, 13, 0, MealType.LUNCH, "rice_cooked", 250.0, "g"),
-            MealSeed(2, 13, 0, MealType.LUNCH, "chicken_breast", 120.0, "g"),
-            MealSeed(2, 13, 5, MealType.LUNCH, "olive_oil", 10.0, "ml"),
-            MealSeed(2, 18, 45, MealType.DINNER, "salmon", 150.0, "g"),
-            MealSeed(2, 18, 45, MealType.DINNER, "broccoli", 200.0, "g"),
+            MealSeed(2, 13, 0, MealType.LUNCH, "chicken_breast_raw", 120.0, "g"),
+            MealSeed(2, 13, 5, MealType.LUNCH, "olive_oil", 10.0, "g"),
+            MealSeed(2, 18, 45, MealType.DINNER, "salmon_atlantic_farmed_raw", 150.0, "g"),
+            MealSeed(2, 18, 45, MealType.DINNER, "broccoli_raw", 200.0, "g"),
+            MealSeed(2, 18, 50, MealType.DINNER, "spinach_raw", 100.0, "g"),
 
             MealSeed(3, 8, 15, MealType.BREAKFAST, "oats_dry", 70.0, "g"),
-            MealSeed(3, 8, 15, MealType.BREAKFAST, "banana", 1.0, "piece"),
-            MealSeed(3, 12, 30, MealType.LUNCH, "brown_rice_cooked", 200.0, "g"),
-            MealSeed(3, 12, 30, MealType.LUNCH, "tofu_firm", 200.0, "g"),
-            MealSeed(3, 12, 35, MealType.LUNCH, "tomato", 150.0, "g"),
-            MealSeed(3, 19, 30, MealType.DINNER, "sweet_potato", 180.0, "g"),
-            MealSeed(3, 19, 30, MealType.DINNER, "egg", 1.0, "piece"),
+            MealSeed(3, 8, 15, MealType.BREAKFAST, "banana_raw", 1.0, "piece"),
+            MealSeed(3, 12, 30, MealType.LUNCH, "rice_brown_cooked", 200.0, "g"),
+            MealSeed(3, 12, 30, MealType.LUNCH, "edamame_prepared", 120.0, "g"),
+            MealSeed(3, 12, 35, MealType.LUNCH, "tomato_raw", 150.0, "g"),
+            MealSeed(3, 19, 30, MealType.DINNER, "sweet_potato_baked", 180.0, "g"),
+            MealSeed(3, 19, 30, MealType.DINNER, "shrimp_raw", 150.0, "g"),
+            MealSeed(3, 19, 35, MealType.DINNER, "beef_sirloin_raw", 100.0, "g"),
         )
     }
 }

@@ -14,10 +14,16 @@ import com.healthtrend.core.domain.model.MealType
 import com.healthtrend.core.domain.model.MetricObservation
 import com.healthtrend.core.domain.model.NutrientDefinition
 import com.healthtrend.core.domain.model.NutritionMetricIds
+import com.healthtrend.core.domain.nutrition.NutrientCatalog
+import com.healthtrend.core.domain.nutrition.lookup.FoodNutrientProfile
+import com.healthtrend.core.domain.nutrition.lookup.FoodSearchResult
+import com.healthtrend.core.domain.nutrition.lookup.LookupTier
+import com.healthtrend.core.domain.nutrition.lookup.NutritionLookupRepository
 import com.healthtrend.core.domain.repository.MetricRepository
 import com.healthtrend.core.domain.repository.NutritionRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +31,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -59,17 +66,30 @@ data class NutritionUiState(
     val dayStartEpochMilli: Long = 0L,
     val isToday: Boolean = true,
     val query: String = "",
-    val foods: List<FoodItem> = emptyList(),
+    /** Hits from every lookup tier, best source first (AGENTS.md §5.2). */
+    val searchResults: List<FoodSearchResult> = emptyList(),
     val selectedFood: FoodWithNutrients? = null,
+    /** Set while a non-local hit's profile is being fetched, so the list can say so. */
+    val isResolving: Boolean = false,
+    /** A fetched profile awaiting the user's confirmation before it is written (AGENTS.md §5.3). */
+    val pendingProfile: FoodNutrientProfile? = null,
     val mealType: MealType = MealType.LUNCH,
+    /** Registered nutrients, for the day's totals. */
     val nutrients: List<NutrientDefinition> = emptyList(),
+    /** The full catalogue, for labelling an incoming profile's fields before it has been saved. */
+    val profileNutrients: List<NutrientDefinition> = emptyList(),
     val meals: List<MealRow> = emptyList(),
     val totals: List<DayNutrientTotal> = emptyList(),
     @StringRes val messageRes: Int? = null,
 )
 
 /**
- * Drives the food diary: search, log, delete, and create custom foods.
+ * Drives the food diary: search, confirm, log, delete, and create custom foods.
+ *
+ * Search goes through [NutritionLookupRepository] rather than the food table, so the page offers the
+ * user's own foods *and* the bundled lexicon in one list. A food that is only known to a non-local
+ * tier is never written behind the user's back: it lands in [NutritionUiState.pendingProfile] for
+ * confirmation first (AGENTS.md §5.3).
  *
  * Writing or deleting a meal asks the repository to re-project the affected natural day, so this
  * ViewModel never computes nutrient totals itself (AGENTS.md §4.3).
@@ -77,6 +97,7 @@ data class NutritionUiState(
 class NutritionViewModel(
     private val nutritionRepository: NutritionRepository,
     private val metricRepository: MetricRepository,
+    private val lookupRepository: NutritionLookupRepository,
     private val zoneId: ZoneId,
     private val nowMillis: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
@@ -86,32 +107,63 @@ class NutritionViewModel(
         val query: String = "",
         val selectedFoodId: String? = null,
         val selectedFood: FoodWithNutrients? = null,
+        val isResolving: Boolean = false,
+        val pendingProfile: FoodNutrientProfile? = null,
         val mealType: MealType = MealType.LUNCH,
         @StringRes val messageRes: Int? = null,
     )
 
+    /** Everything the selected day contributes, kept together so the combine stays readable. */
+    private data class DayData(
+        val range: DayRange,
+        val nutrients: List<NutrientDefinition>,
+        val foods: List<FoodItem>,
+        val meals: List<MealLog>,
+        val observations: List<MetricObservation>,
+    )
+
     private val controls = MutableStateFlow(Controls(dayStartEpochMilli = todayStart()))
 
+    /**
+     * Identifies the newest in-flight profile fetch.
+     *
+     * `selectFood` can get away with comparing ids, but a lookup needs a token: the user may tap
+     * 三文鱼 and then 藜麦 before the first response lands, and the second tap has no id to compare
+     * against yet. Only touched from the main dispatcher.
+     */
+    private var lookupToken = 0
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState: StateFlow<NutritionUiState> = controls
+    private val searchResults: Flow<List<FoodSearchResult>> = controls
+        .map { it.query }
+        .distinctUntilChanged()
+        .flatMapLatest { query -> flow { emit(lookupRepository.search(query)) } }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val dayData: Flow<DayData> = controls
         .map { it.dayStartEpochMilli }
         .distinctUntilChanged()
         .flatMapLatest { dayStart ->
             val range: DayRange = TimeKeys.dayRangeUtcMillis(dayStart, zoneId)
             combine(
                 nutritionRepository.observeNutrientDefinitions(),
-                // One read of the small food lexicon serves both the search box (filtered in
-                // memory — a few hundred rows) and the name lookup for the day's diary rows.
+                // One read of the (small) saved-food table serves the diary's name lookup. The
+                // search list no longer comes from here — it comes from the lookup tiers.
                 nutritionRepository.observeFoods(""),
                 nutritionRepository.observeMeals(range.startMillis, range.endMillisExclusive),
                 metricRepository.observeObservations(range.startMillis, range.endMillisExclusive),
-                controls,
-            ) { nutrients, foods, meals, observations, current ->
-                withContext(Dispatchers.Default) {
-                    build(range, nutrients, foods, meals, observations, current)
-                }
+            ) { nutrients, foods, meals, observations ->
+                DayData(range, nutrients, foods, meals, observations)
             }
         }
+
+    val uiState: StateFlow<NutritionUiState> = combine(
+        dayData,
+        searchResults,
+        controls,
+    ) { day, hits, current ->
+        withContext(Dispatchers.Default) { build(day, hits, current) }
+    }
         .catch { emit(NutritionUiState(isLoading = false)) }
         .stateIn(
             scope = viewModelScope,
@@ -140,12 +192,13 @@ class NutritionViewModel(
         }
     }
 
-    // ------------------------------------------------------------------ food selection
+    // ------------------------------------------------------------------ search & selection
 
     fun setQuery(query: String) {
         controls.update { it.copy(query = query) }
     }
 
+    /** Picks a food the user already has, and puts it straight into the log flow. */
     fun selectFood(foodId: String) {
         controls.update { it.copy(selectedFoodId = foodId, selectedFood = null) }
         viewModelScope.launch {
@@ -154,6 +207,79 @@ class NutritionViewModel(
                 // Discard a late response for a food the user has since navigated away from.
                 if (current.selectedFoodId == foodId) current.copy(selectedFood = food) else current
             }
+        }
+    }
+
+    /**
+     * Acts on a search hit.
+     *
+     * A hit the user already owns needs no ceremony. Anything else is fetched and shown for
+     * confirmation first — nothing externally sourced reaches the database unread (AGENTS.md §5.3).
+     */
+    fun selectSearchResult(result: FoodSearchResult) {
+        if (result.tier == LookupTier.PERSONAL) {
+            selectFood(result.foodRef.localId)
+            return
+        }
+        val token = ++lookupToken
+        controls.update { it.copy(isResolving = true, pendingProfile = null) }
+        viewModelScope.launch {
+            val profile = lookupRepository.profile(result).getOrNull()
+            if (token != lookupToken) return@launch
+            controls.update { it.copy(isResolving = false, pendingProfile = profile) }
+            if (profile == null) postMessage(R.string.nutrition_lookup_failed)
+        }
+    }
+
+    /** Discards the confirmation sheet, and any fetch still in flight for it. */
+    fun dismissPendingProfile() {
+        lookupToken++
+        controls.update { it.copy(pendingProfile = null, isResolving = false) }
+    }
+
+    /**
+     * Writes a reviewed profile into the local dictionary and selects it for logging.
+     *
+     * [nutrientPerReference] is what the user left on screen, which may differ from what the source
+     * said. That distinction is kept: an untouched copy stays marked as curated data, an edited one
+     * is recorded as the user's own food, so a later change to the bundled lexicon can never quietly
+     * overwrite a correction the user made.
+     */
+    fun confirmPendingProfile(referenceAmount: Double, nutrientPerReference: Map<String, Double>) {
+        val profile = controls.value.pendingProfile ?: return
+        if (!referenceAmount.isFinite() || referenceAmount <= 0.0) {
+            postMessage(R.string.nutrition_invalid_amount)
+            return
+        }
+        val values = nutrientPerReference.filterValues { it.isFinite() && it > 0.0 }
+        if (values.isEmpty()) {
+            postMessage(R.string.nutrition_at_least_one_nutrient)
+            return
+        }
+        val edited = referenceAmount != profile.referenceAmount ||
+            values != profile.nutrients.filterValues { it > 0.0 }
+
+        viewModelScope.launch {
+            lookupRepository
+                .save(
+                    profile = profile.copy(
+                        referenceAmount = referenceAmount,
+                        nutrients = values,
+                    ),
+                    isCustom = edited,
+                )
+                .onSuccess { saved ->
+                    controls.update {
+                        it.copy(
+                            pendingProfile = null,
+                            isResolving = false,
+                            selectedFoodId = saved.food.id,
+                            selectedFood = saved,
+                        )
+                    }
+                    postMessage(R.string.entry_saved)
+                }
+                .onFailure { postMessage(R.string.nutrition_lookup_failed) }
         }
     }
 
@@ -222,6 +348,9 @@ class NutritionViewModel(
         }
         viewModelScope.launch {
             val foodId = "food_${UUID.randomUUID()}"
+            nutritionRepository.upsertNutrientDefinitions(
+                values.keys.mapNotNull { NutrientCatalog.byId[it] },
+            )
             nutritionRepository.upsertFoodWithNutrients(
                 food = FoodItem(
                     id = foodId,
@@ -251,18 +380,15 @@ class NutritionViewModel(
     // ------------------------------------------------------------------ internals
 
     private fun build(
-        range: DayRange,
-        nutrients: List<NutrientDefinition>,
-        foods: List<FoodItem>,
-        meals: List<MealLog>,
-        observations: List<MetricObservation>,
+        day: DayData,
+        searchResults: List<FoodSearchResult>,
         controls: Controls,
     ): NutritionUiState {
-        val nutrientsById = nutrients.associateBy { it.id }
-        val foodsById = foods.associateBy { it.id }
+        val nutrientsById = day.nutrients.associateBy { it.id }
+        val foodsById = day.foods.associateBy { it.id }
 
         // Read the day's totals back out of the projected time series (AGENTS.md §4.3).
-        val totals = observations
+        val totals = day.observations
             .filter { NutritionMetricIds.matches(it.metricId) }
             .groupBy { it.metricId }
             .mapNotNull { (metricId, group) ->
@@ -272,21 +398,22 @@ class NutritionViewModel(
             }
             .sortedBy { it.nutrient.displayOrder }
 
-        val query = controls.query.trim()
-        val matches =
-            if (query.isEmpty()) foods
-            else foods.filter { it.name.contains(query, ignoreCase = true) }
-
         return NutritionUiState(
             isLoading = false,
-            dayStartEpochMilli = range.startMillis,
-            isToday = range.startMillis == todayStart(),
+            dayStartEpochMilli = day.range.startMillis,
+            isToday = day.range.startMillis == todayStart(),
             query = controls.query,
-            foods = matches,
+            searchResults = searchResults,
             selectedFood = controls.selectedFood,
+            isResolving = controls.isResolving,
+            pendingProfile = controls.pendingProfile,
             mealType = controls.mealType,
-            nutrients = nutrients,
-            meals = meals
+            nutrients = day.nutrients,
+            // Metadata for editing an incoming profile comes from the catalogue rather than from the
+            // database: the sheet may open before the day's definitions have loaded on a fresh
+            // install, and the catalogue is the same table the definitions were registered from.
+            profileNutrients = NutrientCatalog.ALL,
+            meals = day.meals
                 .sortedByDescending { it.timestampEpochMilli }
                 .map { MealRow(meal = it, food = foodsById[it.foodId]) },
             totals = totals,

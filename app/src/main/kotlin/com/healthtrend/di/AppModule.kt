@@ -1,9 +1,14 @@
 package com.healthtrend.di
 
 import com.healthtrend.core.data.local.HealthTrendDatabase
+import com.healthtrend.core.data.nutrition.lexicon.BundledLexiconProvider
+import com.healthtrend.core.data.nutrition.lookup.NutritionLookupRepositoryImpl
+import com.healthtrend.core.data.nutrition.lookup.SavedFoodLookupProvider
 import com.healthtrend.core.data.projection.NutritionProjectionService
 import com.healthtrend.core.data.repository.MetricRepositoryImpl
 import com.healthtrend.core.data.repository.NutritionRepositoryImpl
+import com.healthtrend.core.domain.nutrition.lookup.NutritionLookupProvider
+import com.healthtrend.core.domain.nutrition.lookup.NutritionLookupRepository
 import com.healthtrend.core.domain.repository.MetricRepository
 import com.healthtrend.core.domain.repository.NutritionRepository
 import com.healthtrend.ui.compare.CompareViewModel
@@ -13,6 +18,7 @@ import com.healthtrend.ui.nutrition.NutritionViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.core.module.Module
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import java.time.ZoneId
 
@@ -39,6 +45,28 @@ val appModule: Module = module {
 
     single<NutritionRepository> { NutritionRepositoryImpl(database = get(), projection = get()) }
 
+    // ---------------------------------------------------------------- nutrition lookup (§5.2)
+    //
+    // The providers are registered individually and collected by the repository, which is what makes
+    // "add a remote or AI tier" a one-line change here rather than an edit to the pipeline.
+
+    /** Tier 1: the user's own foods, already in SQLite. */
+    single<NutritionLookupProvider>(named(SavedFoodLookupProvider.NAME)) {
+        SavedFoodLookupProvider(nutritionRepository = get())
+    }
+
+    /** Tier 2: the lexicon compiled into the app. */
+    single<NutritionLookupProvider>(named(BundledLexiconProvider.NAME)) {
+        BundledLexiconProvider()
+    }
+
+    single<NutritionLookupRepository> {
+        NutritionLookupRepositoryImpl(
+            providers = getAll<NutritionLookupProvider>(),
+            nutritionRepository = get(),
+        )
+    }
+
     viewModel {
         DashboardViewModel(
             metricRepository = get(),
@@ -48,6 +76,11 @@ val appModule: Module = module {
     viewModel { MetricDetailViewModel(metricRepository = get(), zoneId = get()) }
     viewModel { CompareViewModel(metricRepository = get(), zoneId = get()) }
     viewModel {
-        NutritionViewModel(nutritionRepository = get(), metricRepository = get(), zoneId = get())
+        NutritionViewModel(
+            nutritionRepository = get(),
+            metricRepository = get(),
+            lookupRepository = get(),
+            zoneId = get(),
+        )
     }
 }
