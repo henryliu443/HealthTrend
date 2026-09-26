@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -54,6 +55,7 @@ import com.healthtrend.core.domain.nutrition.lookup.LookupTier
 import com.healthtrend.ui.common.labelRes
 import com.healthtrend.ui.common.needsConfirmation
 import com.healthtrend.ui.components.ChoiceChips
+import com.healthtrend.ui.components.CompactNumberField
 import com.healthtrend.ui.components.SectionCard
 import com.healthtrend.ui.components.StatRow
 import com.healthtrend.ui.components.StatusPill
@@ -352,9 +354,9 @@ private fun ConfirmProfileDialog(
         text = {
             Column(
                 modifier = Modifier
-                    .heightIn(max = 460.dp)
+                    .heightIn(max = 320.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(profile.foodName, style = MaterialTheme.typography.titleMedium)
                 profile.sourceName?.let { source ->
@@ -368,50 +370,73 @@ private fun ConfirmProfileDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                // The basis is quoted inline with its field: it is the one figure that changes what
+                // every other row means, so it stays visible at the top instead of scrolling away.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.nutrition_reference_amount),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    CompactNumberField(
+                        value = referenceText,
+                        onValueChange = { referenceText = it },
+                        modifier = Modifier.width(72.dp),
+                        isError = referenceText.isNotBlank() &&
+                            (parsedReference == null || parsedReference <= 0.0),
+                    )
+                    Text(
+                        text = profile.referenceUnit,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                if (referenceText.isNotBlank() &&
+                    (parsedReference == null || parsedReference <= 0.0)
+                ) {
+                    Text(
+                        text = stringResource(R.string.nutrition_invalid_amount),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                listed.forEach { nutrientId ->
+                    val nutrient = byId[nutrientId]
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = nutrient?.name ?: nutrientId,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        CompactNumberField(
+                            value = amounts[nutrientId].orEmpty(),
+                            onValueChange = { input -> amounts = amounts + (nutrientId to input) },
+                            modifier = Modifier.width(72.dp),
+                        )
+                        // A fixed gutter keeps every field on the same axis regardless of how long
+                        // the unit string is (g, mg, μg).
+                        Text(
+                            text = nutrient?.unit.orEmpty(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(24.dp),
+                        )
+                    }
+                }
                 Text(
                     text = stringResource(R.string.nutrition_confirm_note),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                OutlinedTextField(
-                    value = referenceText,
-                    onValueChange = { referenceText = it },
-                    label = {
-                        Text(
-                            stringResource(R.string.nutrition_reference_amount) +
-                                " (" + profile.referenceUnit + ")",
-                        )
-                    },
-                    isError = referenceText.isNotBlank() &&
-                        (parsedReference == null || parsedReference <= 0.0),
-                    supportingText = {
-                        if (referenceText.isNotBlank() &&
-                            (parsedReference == null || parsedReference <= 0.0)
-                        ) {
-                            Text(stringResource(R.string.nutrition_invalid_amount))
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                )
-                listed.forEach { nutrientId ->
-                    val nutrient = byId[nutrientId]
-                    OutlinedTextField(
-                        value = amounts[nutrientId].orEmpty(),
-                        onValueChange = { input -> amounts = amounts + (nutrientId to input) },
-                        label = {
-                            Text(
-                                stringResource(
-                                    R.string.nutrition_nutrient_per_reference,
-                                    nutrient?.name ?: nutrientId,
-                                    nutrient?.unit.orEmpty(),
-                                ),
-                            )
-                        },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                    )
-                }
             }
         },
         confirmButton = {
@@ -667,7 +692,7 @@ private fun NewFoodDialog(
         text = {
             Column(
                 modifier = Modifier
-                    .heightIn(max = 420.dp)
+                    .heightIn(max = 320.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -693,23 +718,29 @@ private fun NewFoodDialog(
                     singleLine = true,
                 )
                 nutrients.forEach { nutrient ->
-                    OutlinedTextField(
-                        value = amounts[nutrient.id].orEmpty(),
-                        onValueChange = { input ->
-                            amounts = amounts + (nutrient.id to input)
-                        },
-                        label = {
-                            Text(
-                                stringResource(
-                                    R.string.nutrition_nutrient_per_reference,
-                                    nutrient.name,
-                                    nutrient.unit,
-                                ),
-                            )
-                        },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = nutrient.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        CompactNumberField(
+                            value = amounts[nutrient.id].orEmpty(),
+                            onValueChange = { input -> amounts = amounts + (nutrient.id to input) },
+                            modifier = Modifier.width(72.dp),
+                        )
+                        Text(
+                            text = nutrient.unit,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(24.dp),
+                        )
+                    }
                 }
             }
         },

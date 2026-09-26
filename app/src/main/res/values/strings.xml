@@ -129,7 +129,6 @@
     <string name="nutrition_reference_unit">参考单位</string>
     <string name="nutrition_reference_unit_hint">g / ml / piece / serving</string>
     <string name="nutrition_reference_line">参考量：每 %1$s %2$s</string>
-    <string name="nutrition_nutrient_per_reference">%1$s（每参考量，%2$s）</string>
     <string name="nutrition_at_least_one_nutrient">至少填写一个大于 0 的营养素</string>
     <string name="nutrition_meals_title">当日记录</string>
     <string name="nutrition_meals_empty">这一天还没有记录</string>
