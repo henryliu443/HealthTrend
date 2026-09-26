@@ -17,6 +17,20 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    // Room migration tests read the exported schemas from androidTest assets.
+    sourceSets["androidTest"].assets.srcDir("$projectDir/schemas")
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+}
+
+// AGENTS.md 4.5: exportSchema = true -> JSON schemas are versioned in VCS.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 kotlin {
@@ -30,4 +44,11 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
+
+    // JVM unit tests: Robolectric supplies the Android runtime so Room can run in-memory.
+    testImplementation(libs.junit4)
+    testImplementation(libs.kotest.assertions)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

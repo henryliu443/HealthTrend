@@ -10,7 +10,8 @@ kotlin {
 
 dependencies {
     api(project(":core:common"))
-    implementation(libs.kotlinx.coroutines.core)
+    // Flow appears in Repository interfaces -> must be part of the public API.
+    api(libs.kotlinx.coroutines.core)
 
     testImplementation(libs.junit.jupiter.api)
     testImplementation(libs.kotest.assertions)
