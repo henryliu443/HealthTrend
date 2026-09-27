@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -47,6 +48,7 @@ import com.healthtrend.ui.common.metricDisplayName
 import com.healthtrend.ui.components.ChoiceChips
 import com.healthtrend.ui.components.SectionCard
 import com.healthtrend.ui.format.Formatters
+import com.healthtrend.ui.settings.openAppLanguageSettings
 import com.healthtrend.ui.theme.HealthTrendTheme
 import org.koin.androidx.compose.koinViewModel
 import java.time.Instant
@@ -72,6 +74,7 @@ internal fun DashboardScreen(
         onLoadDemoData = viewModel::loadDemoData,
         onAddMetric = viewModel::addMetric,
         onAddObservation = viewModel::addObservation,
+        onLanguageUnavailable = viewModel::reportLanguageSettingsUnavailable,
         onMessageShown = viewModel::consumeMessage,
         modifier = modifier,
     )
@@ -88,6 +91,7 @@ private fun DashboardContent(
     onLoadDemoData: () -> Unit,
     onAddMetric: (name: String, unit: String, concern: MetricConcern?) -> Unit,
     onAddObservation: (metricId: String, value: Double) -> Unit,
+    onLanguageUnavailable: () -> Unit,
     onMessageShown: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -103,9 +107,25 @@ private fun DashboardContent(
     var showAddMetricDialog by remember { mutableStateOf(false) }
     var entryTarget by remember { mutableStateOf<MetricDefinition?>(null) }
 
+    val context = LocalContext.current
+
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.dashboard_title)) }) },
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.dashboard_title)) },
+                actions = {
+                    // No language picker of its own — see ui/settings/LanguageSettings.kt.
+                    TextButton(
+                        onClick = {
+                            if (!openAppLanguageSettings(context)) onLanguageUnavailable()
+                        },
+                    ) {
+                        Text(stringResource(R.string.action_language))
+                    }
+                },
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { insets ->
         Column(
@@ -426,6 +446,7 @@ private fun DashboardPreview() {
             onLoadDemoData = {},
             onAddMetric = { _, _, _ -> },
             onAddObservation = { _, _ -> },
+            onLanguageUnavailable = {},
             onMessageShown = {},
         )
     }
@@ -444,6 +465,7 @@ private fun DashboardEmptyPreview() {
             onLoadDemoData = {},
             onAddMetric = { _, _, _ -> },
             onAddObservation = { _, _ -> },
+            onLanguageUnavailable = {},
             onMessageShown = {},
         )
     }

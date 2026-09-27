@@ -157,6 +157,16 @@ class DashboardViewModel(
         message.value = null
     }
 
+    /**
+     * Reports that the jump to the system language settings could not be made.
+     *
+     * Nothing else can be done about it from here, but saying so beats a button that silently does
+     * nothing.
+     */
+    fun reportLanguageSettingsUnavailable() {
+        message.value = R.string.language_unavailable
+    }
+
     private companion object {
         const val STOP_TIMEOUT_MILLIS = 5_000L
         const val CUSTOM_DISPLAY_ORDER = 1_000
