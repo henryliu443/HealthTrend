@@ -54,6 +54,7 @@ import com.healthtrend.core.domain.nutrition.lookup.FoodSearchResult
 import com.healthtrend.core.domain.nutrition.lookup.LookupTier
 import com.healthtrend.ui.common.labelRes
 import com.healthtrend.ui.common.needsConfirmation
+import com.healthtrend.ui.common.nutrientName
 import com.healthtrend.ui.components.ChoiceChips
 import com.healthtrend.ui.components.CompactNumberField
 import com.healthtrend.ui.components.SectionCard
@@ -221,7 +222,7 @@ private fun NutritionContent(
                     selected.nutrients.forEach { value ->
                         val nutrient = state.nutrients.firstOrNull { it.id == value.nutrientId }
                         StatRow(
-                            label = nutrient?.name ?: value.nutrientId,
+                            label = nutrient?.let { nutrientName(it.id, it.name) } ?: value.nutrientId,
                             value = Formatters.valueWithUnit(
                                 value.amountPerReference,
                                 nutrient?.unit.orEmpty(),
@@ -248,7 +249,7 @@ private fun NutritionContent(
                 } else {
                     state.totals.forEach { total ->
                         StatRow(
-                            label = total.nutrient.name,
+                            label = nutrientName(total.nutrient.id, total.nutrient.name),
                             value = total.nutrient.dailyRecommended?.let { reference ->
                                 stringResource(
                                     R.string.nutrition_totals_progress,
@@ -412,7 +413,7 @@ private fun ConfirmProfileDialog(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = nutrient?.name ?: nutrientId,
+                            text = nutrient?.let { nutrientName(it.id, it.name) } ?: nutrientId,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),
@@ -724,7 +725,7 @@ private fun NewFoodDialog(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = nutrient.name,
+                            text = nutrientName(nutrient.id, nutrient.name),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),
@@ -771,7 +772,7 @@ private fun previewSearchResults(): List<FoodSearchResult> = listOf(
     FoodSearchResult(
         foodRef = FoodRef.of("saved", "demo-egg"),
         tier = LookupTier.PERSONAL,
-        name = "鸡蛋",
+        name = "Egg",
         brand = null,
         defaultReferenceAmount = 1.0,
         defaultReferenceUnit = "piece",
@@ -779,7 +780,7 @@ private fun previewSearchResults(): List<FoodSearchResult> = listOf(
     FoodSearchResult(
         foodRef = FoodRef.of("bundled", "rice_cooked"),
         tier = LookupTier.BUNDLED,
-        name = "米饭（熟）",
+        name = "Cooked white rice",
         brand = null,
         defaultReferenceAmount = 100.0,
         defaultReferenceUnit = "g",
@@ -787,7 +788,7 @@ private fun previewSearchResults(): List<FoodSearchResult> = listOf(
     FoodSearchResult(
         foodRef = FoodRef.of("bundled", "broccoli_raw"),
         tier = LookupTier.BUNDLED,
-        name = "西兰花",
+        name = "Broccoli (raw)",
         brand = null,
         defaultReferenceAmount = 100.0,
         defaultReferenceUnit = "g",
@@ -797,7 +798,7 @@ private fun previewSearchResults(): List<FoodSearchResult> = listOf(
 private fun previewFood(): FoodWithNutrients = FoodWithNutrients(
     food = FoodItem(
         id = "demo-rice",
-        name = "米饭（熟）",
+        name = "Cooked white rice",
         referenceAmount = 100.0,
         referenceUnit = "g",
         isCustom = false,
@@ -814,7 +815,7 @@ private fun previewFood(): FoodWithNutrients = FoodWithNutrients(
 private fun previewProfile(): FoodNutrientProfile = FoodNutrientProfile(
     foodRef = FoodRef.of("bundled", "egg_whole_raw"),
     tier = LookupTier.BUNDLED,
-    foodName = "鸡蛋（1 个，约 50 g）",
+    foodName = "Egg (1 large, about 50 g)",
     brand = null,
     referenceAmount = 50.0,
     referenceUnit = "piece",
@@ -833,7 +834,7 @@ private fun previewNutritionState(zoneId: ZoneId): NutritionUiState {
     val rice = previewFood().food
     val egg = FoodItem(
         id = "demo-egg",
-        name = "鸡蛋",
+        name = "Egg",
         referenceAmount = 1.0,
         referenceUnit = "piece",
         isCustom = true,
@@ -842,7 +843,7 @@ private fun previewNutritionState(zoneId: ZoneId): NutritionUiState {
         isLoading = false,
         dayStartEpochMilli = dayStart,
         isToday = true,
-        query = "米饭",
+        query = "rice",
         searchResults = previewSearchResults(),
         selectedFood = previewFood(),
         mealType = MealType.LUNCH,

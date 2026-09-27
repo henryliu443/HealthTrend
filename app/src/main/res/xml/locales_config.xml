@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The languages the app ships. Android 13+ reads this for the system's per-app language picker, so
+  this is the *only* thing that makes a language available to the user; it must stay in step with the
+  `values-*` directories.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="zh-CN" />
+</locale-config>

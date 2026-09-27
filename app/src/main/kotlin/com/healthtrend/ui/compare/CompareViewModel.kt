@@ -37,8 +37,9 @@ import java.time.ZoneId
  *
  * [series] holds **normalised** copies only; the stored observations are never modified
  * (AGENTS.md §10.4). A metric whose values cannot be normalised in the current [mode] is reported
- * in [unavailableMetricNames] rather than being silently dropped, because a missing line otherwise
- * reads as "no data".
+ * in [unavailableMetricIds] rather than being silently dropped, because a missing line otherwise
+ * reads as "no data". Ids, not names: the label has to be resolved in the current language, which
+ * only the UI layer knows.
  */
 data class CompareUiState(
     val isLoading: Boolean = true,
@@ -47,7 +48,7 @@ data class CompareUiState(
     val availableMetrics: List<MetricDefinition> = emptyList(),
     val selectedMetricIds: Set<String> = emptySet(),
     val series: List<CompareSeries> = emptyList(),
-    val unavailableMetricNames: List<String> = emptyList(),
+    val unavailableMetricIds: List<String> = emptyList(),
     val originEpochMilli: Long = 0L,
 ) {
     /** The chart needs at least two lines to be a comparison rather than a duplicate detail view. */
@@ -148,7 +149,8 @@ class CompareViewModel(
                 )
             }
             if (normalized == null || !normalized.available) {
-                unavailable += definition.name
+                // Only the id travels: the label is resolved where the locale is known.
+                unavailable += definition.id
                 return@forEach
             }
             series += CompareSeries(
@@ -168,7 +170,7 @@ class CompareViewModel(
             availableMetrics = definitions,
             selectedMetricIds = controls.selected,
             series = series,
-            unavailableMetricNames = unavailable,
+            unavailableMetricIds = unavailable,
             originEpochMilli = origin,
         )
     }

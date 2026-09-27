@@ -14,6 +14,11 @@ import com.healthtrend.core.domain.model.NutrientDefinition
  * `metric_observations.metric_id` as `nutrient_<id>`. They are stable identifiers — renaming one
  * would orphan existing rows, so a rename means a migration.
  *
+ * [NutrientDefinition.name] is a **canonical English label**, not what the user necessarily reads:
+ * a stored row cannot be in two languages at once, and a language switch must not rewrite the user's
+ * data. The UI resolves the localised name from the id and only falls back to this label for
+ * nutrients the app does not know about (see `ui/common/NutrientUi.kt` in `:app`).
+ *
  * `dailyRecommended` is a **reference intake** for orientation, in the nutrient's own unit. Where
  * dietary guidance is an upper limit rather than a target (cholesterol, the fat fractions, total
  * sugar) it is deliberately `null`: the UI renders that as "—", which is honest, whereas printing a
@@ -24,34 +29,34 @@ object NutrientCatalog {
 
     val ALL: List<NutrientDefinition> = listOf(
         // ---------------------------------------------------------------- macro
-        nutrient("calories", "能量", "kcal", NutrientCategory.MACRO, 2000.0, 10),
-        nutrient("protein", "蛋白质", "g", NutrientCategory.MACRO, 60.0, 20),
-        nutrient("carbohydrates", "碳水化合物", "g", NutrientCategory.MACRO, 275.0, 30),
-        nutrient("fat", "脂肪", "g", NutrientCategory.MACRO, 60.0, 40),
-        nutrient("fiber", "膳食纤维", "g", NutrientCategory.MACRO, 25.0, 50),
-        nutrient("sugar", "糖", "g", NutrientCategory.MACRO, null, 60),
+        nutrient("calories", "Energy", "kcal", NutrientCategory.MACRO, 2000.0, 10),
+        nutrient("protein", "Protein", "g", NutrientCategory.MACRO, 60.0, 20),
+        nutrient("carbohydrates", "Carbohydrate", "g", NutrientCategory.MACRO, 275.0, 30),
+        nutrient("fat", "Fat", "g", NutrientCategory.MACRO, 60.0, 40),
+        nutrient("fiber", "Dietary fibre", "g", NutrientCategory.MACRO, 25.0, 50),
+        nutrient("sugar", "Sugar", "g", NutrientCategory.MACRO, null, 60),
 
         // ---------------------------------------------------------------- lipids
-        nutrient("saturated_fat", "饱和脂肪", "g", NutrientCategory.LIPID, null, 70),
-        nutrient("monounsaturated_fat", "单不饱和脂肪", "g", NutrientCategory.LIPID, null, 80),
-        nutrient("polyunsaturated_fat", "多不饱和脂肪", "g", NutrientCategory.LIPID, null, 90),
-        nutrient("cholesterol", "胆固醇", "mg", NutrientCategory.LIPID, null, 100),
+        nutrient("saturated_fat", "Saturated fat", "g", NutrientCategory.LIPID, null, 70),
+        nutrient("monounsaturated_fat", "Monounsaturated fat", "g", NutrientCategory.LIPID, null, 80),
+        nutrient("polyunsaturated_fat", "Polyunsaturated fat", "g", NutrientCategory.LIPID, null, 90),
+        nutrient("cholesterol", "Cholesterol", "mg", NutrientCategory.LIPID, null, 100),
 
         // ---------------------------------------------------------------- minerals
-        nutrient("sodium", "钠", "mg", NutrientCategory.MINERAL, 2000.0, 110),
-        nutrient("potassium", "钾", "mg", NutrientCategory.MINERAL, 2000.0, 120),
-        nutrient("calcium", "钙", "mg", NutrientCategory.MINERAL, 800.0, 130),
-        nutrient("iron", "铁", "mg", NutrientCategory.MINERAL, 15.0, 140),
-        nutrient("magnesium", "镁", "mg", NutrientCategory.MINERAL, 330.0, 150),
-        nutrient("phosphorus", "磷", "mg", NutrientCategory.MINERAL, 700.0, 160),
-        nutrient("zinc", "锌", "mg", NutrientCategory.MINERAL, 12.5, 170),
+        nutrient("sodium", "Sodium", "mg", NutrientCategory.MINERAL, 2000.0, 110),
+        nutrient("potassium", "Potassium", "mg", NutrientCategory.MINERAL, 2000.0, 120),
+        nutrient("calcium", "Calcium", "mg", NutrientCategory.MINERAL, 800.0, 130),
+        nutrient("iron", "Iron", "mg", NutrientCategory.MINERAL, 15.0, 140),
+        nutrient("magnesium", "Magnesium", "mg", NutrientCategory.MINERAL, 330.0, 150),
+        nutrient("phosphorus", "Phosphorus", "mg", NutrientCategory.MINERAL, 700.0, 160),
+        nutrient("zinc", "Zinc", "mg", NutrientCategory.MINERAL, 12.5, 170),
 
         // ---------------------------------------------------------------- vitamins
-        nutrient("vitamin_a", "维生素 A", "μg", NutrientCategory.VITAMIN, 800.0, 180),
-        nutrient("vitamin_c", "维生素 C", "mg", NutrientCategory.VITAMIN, 100.0, 190),
-        nutrient("vitamin_d", "维生素 D", "μg", NutrientCategory.VITAMIN, 10.0, 200),
-        nutrient("vitamin_b12", "维生素 B12", "μg", NutrientCategory.VITAMIN, 2.4, 210),
-        nutrient("folate", "叶酸", "μg", NutrientCategory.VITAMIN, 400.0, 220),
+        nutrient("vitamin_a", "Vitamin A", "μg", NutrientCategory.VITAMIN, 800.0, 180),
+        nutrient("vitamin_c", "Vitamin C", "mg", NutrientCategory.VITAMIN, 100.0, 190),
+        nutrient("vitamin_d", "Vitamin D", "μg", NutrientCategory.VITAMIN, 10.0, 200),
+        nutrient("vitamin_b12", "Vitamin B12", "μg", NutrientCategory.VITAMIN, 2.4, 210),
+        nutrient("folate", "Folate", "μg", NutrientCategory.VITAMIN, 400.0, 220),
     )
 
     /** Lookup by id, for turning a stored `nutrient_*` metric id back into metadata. */

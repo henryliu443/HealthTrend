@@ -35,6 +35,7 @@ from food_lexicon_catalog import (
     CATALOG,
     CONDIMENTS,
     DAIRY,
+    DISPLAY_NAMES,
     FRUITS,
     GRAINS,
     LEGUMES,
@@ -130,6 +131,10 @@ NUTRIENT_ORDER = [
 ]
 
 PAIRS_PER_LINE = 4
+
+# Size words that may lead a household measure ("large", "medium (3\" dia)", ...). Used to name a
+# per-piece food readably — "Egg (1 large, about 50 g)" rather than "Egg (1 piece, about 50 g)".
+PIECE_WORDS = ("extra small", "extra large", "small", "medium", "large", "fruit")
 
 # Household measures are only trusted between these bounds (grams). Anything outside is a sign the
 # measure matched the wrong row.
@@ -238,6 +243,15 @@ def kotlin_string(value: str) -> str:
     return f'"{escaped}"'
 
 
+def piece_word(measure_label: str) -> str:
+    """The short, readable name of a household measure, for a per-piece food's display name."""
+    lowered = measure_label.lower()
+    for word in PIECE_WORDS:
+        if lowered.startswith(word):
+            return word
+    return "piece"
+
+
 # --------------------------------------------------------------------------- pipeline
 
 
@@ -296,7 +310,15 @@ def collect(archive: zipfile.ZipFile) -> tuple[dict[str, list[dict[str, object]]
             problems.append(f"{entry.slug}: no energy value — {row['description']}")
             continue
 
-        name = entry.name
+        display = DISPLAY_NAMES.get(entry.slug)
+        if display is None:
+            problems.append(f"{entry.slug}: no English display name in DISPLAY_NAMES")
+            continue
+
+        # The curated Chinese name becomes a search term, so the food is findable in either
+        # language while its stored name stays a single, stable label.
+        search_terms = [entry.name, *entry.aliases]
+        name = display
         reference_amount, reference_unit = 100.0, "g"
         if entry.piece:
             try:
@@ -310,7 +332,7 @@ def collect(archive: zipfile.ZipFile) -> tuple[dict[str, list[dict[str, object]]
             scale = grams / 100.0
             profile = {key: value * scale for key, value in profile.items()}
             reference_amount, reference_unit = grams, "piece"
-            name = f"{entry.name}（1 个，约 {grams:g} g）"
+            name = f"{display} (1 {piece_word(label)}, about {grams:g} g)"
 
         if len(profile) < MIN_NUTRIENTS:
             problems.append(
@@ -323,6 +345,7 @@ def collect(archive: zipfile.ZipFile) -> tuple[dict[str, list[dict[str, object]]
                 "entry": entry,
                 "row": row,
                 "name": name,
+                "search_terms": search_terms,
                 "reference_amount": reference_amount,
                 "reference_unit": reference_unit,
                 "nutrients": profile,
@@ -363,9 +386,10 @@ package com.healthtrend.core.data.nutrition.lexicon
             lines.append(f"            name = {kotlin_string(str(item['name']))},")
             lines.append(f"            fdcId = {row['fdc_id']}L,")
             lines.append(f"            fdcDescription = {kotlin_string(row['description'])},")
-            if entry.aliases:
-                aliases = ", ".join(kotlin_string(alias) for alias in entry.aliases)
-                lines.append(f"            searchTerms = listOf({aliases}),")
+            terms: list[str] = item["search_terms"]  # type: ignore[assignment]
+            if terms:
+                joined = ", ".join(kotlin_string(term) for term in terms)
+                lines.append(f"            searchTerms = listOf({joined}),")
             lines.append(
                 f"            referenceAmount = {kotlin_double(float(item['reference_amount']))},"
                 f" referenceUnit = {kotlin_string(str(item['reference_unit']))},"

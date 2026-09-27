@@ -35,6 +35,7 @@ import com.healthtrend.ui.chart.CompareSeries
 import com.healthtrend.ui.chart.chartX
 import com.healthtrend.ui.common.TimeRange
 import com.healthtrend.ui.common.labelRes
+import com.healthtrend.ui.common.metricDisplayName
 import com.healthtrend.ui.common.scaleNoteRes
 import com.healthtrend.ui.components.ChoiceChips
 import com.healthtrend.ui.components.ChartLegend
@@ -129,7 +130,7 @@ private fun CompareContent(
                 ToggleChips(
                     options = state.availableMetrics,
                     isSelected = { it.id in state.selectedMetricIds },
-                    label = { it.name },
+                    label = { metricDisplayName(it) },
                     onToggle = { onToggleMetric(it.id) },
                 )
             }
@@ -149,18 +150,23 @@ private fun CompareContent(
                     val palette = chartColors.comparisonPalette
                     ChartLegend(
                         entries = state.series.mapIndexed { index, series ->
-                            LegendEntry(palette[index % palette.size], series.name)
+                            LegendEntry(
+                                palette[index % palette.size],
+                                metricDisplayName(series.metricId, series.name),
+                            )
                         },
                     )
                 }
-                if (state.unavailableMetricNames.isNotEmpty()) {
-                    state.unavailableMetricNames.forEach { name ->
-                        Text(
-                            text = stringResource(R.string.compare_unavailable, name),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
+                state.unavailableMetricIds.forEach { metricId ->
+                    val stored = state.availableMetrics.firstOrNull { it.id == metricId }
+                    Text(
+                        text = stringResource(
+                            R.string.compare_unavailable,
+                            metricDisplayName(metricId, stored?.name ?: metricId),
+                        ),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
                 }
                 Text(
                     text = stringResource(R.string.compare_normalization_note),
@@ -217,10 +223,10 @@ private fun previewSeries(
 
 private fun previewCompareState(): CompareUiState {
     val originEpochMilli = Instant.parse("2026-04-20T04:00:00Z").toEpochMilli()
-    val weight = previewMetric("body_weight", "体重", "kg", 10)
-    val heartRate = previewMetric("resting_heart_rate", "静息心率", "bpm", 30)
-    val sleep = previewMetric("sleep_duration", "睡眠时长", "h", 80)
-    val uricAcid = previewMetric("serum_uric_acid", "尿酸", "μmol/L", 70)
+    val weight = previewMetric("body_weight", "Body weight", "kg", 10)
+    val heartRate = previewMetric("resting_heart_rate", "Resting heart rate", "bpm", 30)
+    val sleep = previewMetric("sleep_duration", "Sleep duration", "h", 80)
+    val uricAcid = previewMetric("serum_uric_acid", "Uric acid", "μmol/L", 70)
     return CompareUiState(
         isLoading = false,
         timeRange = TimeRange.LAST_90_DAYS,
@@ -232,7 +238,7 @@ private fun previewCompareState(): CompareUiState {
             previewSeries(heartRate, originEpochMilli, NormalizationMode.Z_SCORE) { 62.0 + 2.0 * sin(2 * PI * it / 7.0) },
             previewSeries(sleep, originEpochMilli, NormalizationMode.Z_SCORE) { 7.2 + 0.4 * sin(2 * PI * it / 7.0 + 1.1) },
         ),
-        unavailableMetricNames = listOf(uricAcid.name),
+        unavailableMetricIds = listOf(uricAcid.id),
         originEpochMilli = originEpochMilli,
     )
 }

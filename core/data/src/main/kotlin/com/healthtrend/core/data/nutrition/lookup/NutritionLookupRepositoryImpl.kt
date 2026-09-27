@@ -10,6 +10,7 @@ import com.healthtrend.core.domain.nutrition.lookup.LookupTier
 import com.healthtrend.core.domain.nutrition.lookup.NutritionLookupProvider
 import com.healthtrend.core.domain.nutrition.lookup.NutritionLookupRepository
 import com.healthtrend.core.domain.repository.NutritionRepository
+import kotlinx.coroutines.flow.first
 import java.util.UUID
 
 /**
@@ -50,13 +51,29 @@ class NutritionLookupRepositoryImpl(
         // page shows the user's own food library before they type anything. The tiers decide what to
         // say about a blank query — the bundled lexicon says nothing, the personal tier lists
         // everything.
+        //
+        // The saved ids are read once and used to re-label lexicon hits the user already owns. That
+        // is not bookkeeping for its own sake: a saved food stores a single display name, while the
+        // lexicon is what carries the Chinese synonyms, so without this a Chinese query would offer
+        // 米饭 as a brand-new built-in food and ask the user to confirm figures they had already
+        // reviewed. Ownership is a cross-tier fact, which is why it is settled here and not inside a
+        // provider that cannot see the other tiers.
+        val savedFoodIds = nutritionRepository.observeFoods("").first().mapTo(HashSet()) { it.id }
+
         val seenNames = HashSet<String>()
         return buildList {
             for (provider in orderedProviders) {
                 // A tier that errors is a tier that has nothing to say; the search must survive it.
                 val results = provider.searchFoods(query).getOrNull() ?: continue
                 for (result in results.take(limitPerTier)) {
-                    if (seenNames.add(normalise(result.name))) add(result)
+                    val alreadyOwned = result.tier != LookupTier.PERSONAL &&
+                        result.foodRef.localId in savedFoodIds
+                    val effective = if (alreadyOwned) {
+                        result.copy(tier = LookupTier.PERSONAL)
+                    } else {
+                        result
+                    }
+                    if (seenNames.add(normalise(effective.name))) add(effective)
                 }
             }
         }

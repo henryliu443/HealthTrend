@@ -180,12 +180,19 @@ class NutritionLookupRepositoryTest {
         repository.save(profile, isCustom = false).getOrThrow()
 
         val hits = repository.search("米饭（熟）")
-        // Personal results are collected tier-first, so the user's own copy leads the list…
+        // Personal results are collected tier-first, so the user's own copy leads the list — and it
+        // is found through the Chinese synonym even though nothing local stores that string.
         hits.first().tier shouldBe LookupTier.PERSONAL
-        hits.first().name shouldBe "米饭（熟）"
-        // …and the bundled copy of the same food is de-duplicated away. Foods whose names merely
-        // *contain* the query (糯米饭（熟）, 糙米饭（熟）) are different foods and stay.
-        hits.filter { it.tier == LookupTier.BUNDLED }.map { it.name } shouldNotContain "米饭（熟）"
+        hits.first().name shouldBe "Cooked white rice"
+        // The bundled copy of the same food is not offered a second time. Foods that merely match the
+        // query through a synonym (糯米饭（熟）, 糙米饭（熟）) are different foods and stay.
+        hits.filter { it.name == "Cooked white rice" }.size shouldBe 1
+        hits.map { it.name } shouldContain "Cooked brown rice"
+
+        // Searching by the English name finds the same single, owned entry.
+        val byEnglish = repository.search("Cooked white rice")
+        byEnglish.first().tier shouldBe LookupTier.PERSONAL
+        byEnglish.first().foodRef.localId shouldBe "rice_cooked"
     }
 
     @Test

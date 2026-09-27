@@ -42,6 +42,7 @@ import com.healthtrend.core.domain.model.MetricDataType
 import com.healthtrend.core.domain.model.MetricDefinition
 import com.healthtrend.core.domain.model.MetricLatestValue
 import com.healthtrend.ui.common.labelRes
+import com.healthtrend.ui.common.metricDisplayName
 import com.healthtrend.ui.components.SectionCard
 import com.healthtrend.ui.format.Formatters
 import com.healthtrend.ui.theme.HealthTrendTheme
@@ -202,7 +203,7 @@ private fun MetricCardRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = card.definition.name,
+                text = metricDisplayName(card.definition),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
             )
@@ -279,14 +280,14 @@ private fun AddObservationDialog(
 ) {
     var text by remember { mutableStateOf("") }
     val parsed = text.trim().replace(',', '.').toDoubleOrNull()
+    val name = metricDisplayName(definition)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.entry_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = if (definition.unit.isBlank()) definition.name
-                    else "${definition.name} (${definition.unit})",
+                    text = if (definition.unit.isBlank()) name else "$name (${definition.unit})",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 OutlinedTextField(
@@ -356,11 +357,11 @@ private fun previewLatest(metricId: String, value: Double, count: Int): MetricLa
     )
 
 private fun previewDashboardState(): DashboardUiState {
-    val weight = previewMetric("body_weight", "体重", MetricCategory.BODY, "kg", 10)
-    val heartRate = previewMetric("resting_heart_rate", "静息心率", MetricCategory.BODY, "bpm", 30)
-    val sleep = previewMetric("sleep_duration", "睡眠时长", MetricCategory.LIFESTYLE, "h", 80)
-    val steps = previewMetric("daily_steps", "日步数", MetricCategory.ACTIVITY, "步", 90)
-    val protein = previewMetric("nutrient_protein", "蛋白质", MetricCategory.NUTRITION, "g", 200)
+    val weight = previewMetric("body_weight", "Body weight", MetricCategory.BODY, "kg", 10)
+    val heartRate = previewMetric("resting_heart_rate", "Resting heart rate", MetricCategory.BODY, "bpm", 30)
+    val sleep = previewMetric("sleep_duration", "Sleep duration", MetricCategory.LIFESTYLE, "h", 80)
+    val steps = previewMetric("daily_steps", "Daily steps", MetricCategory.ACTIVITY, "steps", 90)
+    val protein = previewMetric("nutrient_protein", "Protein", MetricCategory.NUTRITION, "g", 200)
     return DashboardUiState(
         isLoading = false,
         canLoadDemoData = true,

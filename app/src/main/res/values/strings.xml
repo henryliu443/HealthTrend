@@ -1,159 +1,201 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Default locale is Chinese. Adding another language is a pure `values-<lang>/strings.xml` drop-in;
-  no Kotlin changes are required. `values/` is the fallback, so every key must exist here first.
+  Base locale is English, so `values/` is both the default and the fallback: every key must exist
+  here first. Other languages are a pure `values-<lang>-r<REGION>/strings.xml` drop-in with no Kotlin
+  changes; the locales advertised to the system's per-app language picker are listed in
+  `res/xml/locales_config.xml`.
+
+  Strings marked translatable="false" are symbols, not prose, and live only here.
 -->
 <resources>
     <string name="app_name">HealthTrend</string>
 
     <!-- Shared actions -->
-    <string name="action_add">添加</string>
-    <string name="action_cancel">取消</string>
-    <string name="action_confirm">确定</string>
-    <string name="action_delete">删除</string>
-    <string name="action_save">保存</string>
-    <string name="action_close">关闭</string>
-    <string name="action_back">返回</string>
+    <string name="action_add">Add</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_save">Save</string>
+    <string name="action_close">Close</string>
+    <string name="action_back">Back</string>
+    <string name="action_language">Language</string>
 
     <!-- Shared labels -->
-    <string name="label_loading">加载中…</string>
+    <string name="label_loading">Loading…</string>
     <string name="label_undefined">—</string>
-    <string name="label_sample_count">样本数</string>
+    <string name="label_sample_count">Samples</string>
 
     <!-- Chart legend (AGENTS.md §7.2 layer order) -->
-    <string name="chart_legend_band">参考区间</string>
-    <string name="chart_legend_raw">原始</string>
-    <string name="chart_legend_smoothed">EWMA 平滑</string>
-    <string name="chart_legend_trend">OLS 趋势</string>
-    <string name="chart_legend_anomaly">偏离点</string>
-    <string name="chart_empty">该时间范围内没有数据</string>
-    <string name="chart_axis_value">数轴</string>
+    <string name="chart_legend_band">Reference band</string>
+    <string name="chart_legend_raw">Raw</string>
+    <string name="chart_legend_smoothed">EWMA fit</string>
+    <string name="chart_legend_trend">OLS trend</string>
+    <string name="chart_legend_anomaly">Flagged</string>
+    <string name="chart_empty">No data in this range</string>
+    <string name="chart_axis_value">Value</string>
 
     <!-- Time ranges -->
-    <string name="range_7d">7 天</string>
-    <string name="range_30d">30 天</string>
-    <string name="range_90d">90 天</string>
-    <string name="range_1y">1 年</string>
-    <string name="range_all">全部</string>
+    <string name="range_7d">7 days</string>
+    <string name="range_30d">30 days</string>
+    <string name="range_90d">90 days</string>
+    <string name="range_1y">1 year</string>
+    <string name="range_all">All</string>
 
     <!-- Metric categories -->
-    <string name="category_body">身体</string>
-    <string name="category_nutrition">营养</string>
-    <string name="category_activity">活动</string>
-    <string name="category_lifestyle">生活方式</string>
-    <string name="category_health">健康</string>
-    <string name="category_custom">自定义</string>
+    <string name="category_body">Body</string>
+    <string name="category_nutrition">Nutrition</string>
+    <string name="category_activity">Activity</string>
+    <string name="category_lifestyle">Lifestyle</string>
+    <string name="category_health">Health</string>
+    <string name="category_custom">Custom</string>
 
     <!-- Dashboard -->
     <string name="dashboard_title">HealthTrend</string>
-    <string name="dashboard_subtitle">本地优先 · 数据只保存在这台设备</string>
-    <string name="dashboard_empty_title">还没有任何指标</string>
-    <string name="dashboard_empty_body">数据库是空的。可以加载一份演示数据，或手动添加一条记录。</string>
-    <string name="dashboard_action_seed_demo">加载演示数据</string>
-    <string name="dashboard_observation_count">%1$d 条记录</string>
-    <string name="dashboard_latest_on">最近 %1$s</string>
-    <string name="dashboard_action_compare">多指标对比</string>
-    <string name="dashboard_action_nutrition">营养记录</string>
-    <string name="dashboard_add_metric">新建指标</string>
-    <string name="dashboard_new_metric_title">新建指标</string>
-    <string name="dashboard_metric_name">指标名称</string>
-    <string name="dashboard_metric_unit">单位（如 kg、mmHg、g）</string>
+    <string name="dashboard_subtitle">Local-first · your data stays on this device</string>
+    <string name="dashboard_empty_title">No metrics yet</string>
+    <string name="dashboard_empty_body">The database is empty. Load the demo data, or add a reading by hand.</string>
+    <string name="dashboard_action_seed_demo">Load demo data</string>
+    <string name="dashboard_observation_count">%1$d readings</string>
+    <string name="dashboard_latest_on">Latest %1$s</string>
+    <string name="dashboard_action_compare">Compare metrics</string>
+    <string name="dashboard_action_nutrition">Food diary</string>
+    <string name="dashboard_action_export">Export data</string>
+    <string name="dashboard_add_metric">New metric</string>
+    <string name="dashboard_new_metric_title">New metric</string>
+    <string name="dashboard_metric_name">Metric name</string>
+    <string name="dashboard_metric_unit">Unit (kg, mmHg, g, …)</string>
+
+    <!-- Export (AGENTS.md §10.4: reading the database never writes to it) -->
+    <string name="export_file_name">healthtrend-%1$s.zip</string>
+    <string name="export_success">Exported to %1$s</string>
+    <string name="export_failed">Export failed</string>
 
     <!-- Entry dialog -->
-    <string name="entry_title">添加记录</string>
-    <string name="entry_value">数值</string>
-    <string name="entry_invalid_value">请输入一个有效数值</string>
-    <string name="entry_use_now">时间：现在</string>
-    <string name="entry_saved">已记录</string>
+    <string name="entry_title">Add reading</string>
+    <string name="entry_value">Value</string>
+    <string name="entry_invalid_value">Enter a valid number</string>
+    <string name="entry_use_now">Time: now</string>
+    <string name="entry_saved">Saved</string>
 
     <!-- Metric detail -->
-    <string name="detail_title">指标详情</string>
-    <string name="detail_stats_title">描述性统计</string>
-    <string name="detail_stat_mean">均值</string>
-    <string name="detail_stat_median">中位数</string>
-    <string name="detail_stat_sd">标准差</string>
-    <string name="detail_stat_min">最小</string>
-    <string name="detail_stat_max">最大</string>
-    <string name="detail_trend_title">趋势</string>
-    <string name="detail_trend_method">对时间做最小二乘（OLS）回归</string>
-    <string name="detail_trend_increasing">上升</string>
-    <string name="detail_trend_decreasing">下降</string>
-    <string name="detail_trend_stable">平稳</string>
-    <string name="detail_trend_insufficient">数据不足</string>
-    <string name="detail_trend_slope">斜率</string>
-    <string name="detail_trend_per_day">%1$s / 天</string>
-    <string name="detail_trend_pvalue">p 值</string>
+    <string name="detail_title">Metric detail</string>
+    <string name="detail_stats_title">Descriptive statistics</string>
+    <string name="detail_stat_mean">Mean</string>
+    <string name="detail_stat_median">Median</string>
+    <string name="detail_stat_sd">Std. deviation</string>
+    <string name="detail_stat_min">Min</string>
+    <string name="detail_stat_max">Max</string>
+    <string name="detail_trend_title">Trend</string>
+    <string name="detail_trend_method">Ordinary least squares against time</string>
+    <string name="detail_trend_increasing">Rising</string>
+    <string name="detail_trend_decreasing">Falling</string>
+    <string name="detail_trend_stable">Flat</string>
+    <string name="detail_trend_insufficient">Not enough data</string>
+    <string name="detail_trend_slope">Slope</string>
+    <string name="detail_trend_per_day">%1$s / day</string>
+    <string name="detail_trend_pvalue">p value</string>
     <string name="detail_trend_r2">R²</string>
-    <string name="detail_trend_note">仅当 p &lt; 0.05 时判为上升或下降，否则标为平稳——平稳只代表统计上无法与"不变"区分，不代表没有变化。</string>
-    <string name="detail_anomaly_title">偏离历史基线</string>
-    <string name="detail_anomaly_none">未检测到明显偏离</string>
-    <string name="detail_anomaly_item">偏离历史基线 %1$sσ</string>
-    <string name="detail_anomaly_disclaimer">偏离判定基于 Z 分数、MAD、IQR 与 EWMA 残差四种统计基线，不代表疾病、也不代表健康风险。</string>
-    <string name="detail_quality_title">数据质量</string>
-    <string name="detail_quality_interval">平均采样间隔</string>
-    <string name="detail_quality_longest_gap">最长缺失</string>
-    <string name="detail_quality_days">%1$s 天</string>
-    <string name="detail_quality_span">跨度</string>
-    <string name="detail_reference_range">参考区间 %1$s – %2$s %3$s</string>
-    <string name="detail_disclaimer">统计相关不等于因果关联；本应用不提供任何医疗诊断。</string>
+    <string name="detail_trend_note">A trend is called rising or falling only when p &lt; 0.05; otherwise it is flat. Flat means the data cannot be told apart from “no change” — it does not mean nothing changed.</string>
+    <string name="detail_anomaly_title">Off the historical baseline</string>
+    <string name="detail_anomaly_none">No clear deviation found</string>
+    <string name="detail_anomaly_item">%1$sσ from baseline</string>
+    <string name="detail_anomaly_disclaimer">Flagging uses four statistical baselines — z-score, MAD, IQR and EWMA residuals. It says nothing about disease or health risk.</string>
+    <string name="detail_quality_title">Data quality</string>
+    <string name="detail_quality_interval">Mean sampling interval</string>
+    <string name="detail_quality_longest_gap">Longest gap</string>
+    <string name="detail_quality_days">%1$s days</string>
+    <string name="detail_quality_span">Span</string>
+    <string name="detail_reference_range">Reference range %1$s – %2$s %3$s</string>
+    <string name="detail_disclaimer">Correlation is not causation; this app provides no medical diagnosis.</string>
 
     <!-- Multi-metric comparison (§7.3) -->
-    <string name="compare_title">多指标对比</string>
-    <string name="compare_mode_zscore">Z-Score</string>
-    <string name="compare_mode_minmax">极差归一</string>
-    <string name="compare_mode_baseline">基准 100</string>
-    <string name="compare_pick_metrics">选择要对比的指标</string>
-    <string name="compare_selected">已选 %1$d 个</string>
-    <string name="compare_need_two">至少选择 2 个指标</string>
-    <string name="compare_unavailable">%1$s 在该方式下无法归一化</string>
-    <string name="compare_normalization_note">归一化只是内存中的展示投影，绝不回写原始观测（AGENTS.md §10.4）。</string>
-    <string name="compare_scale_zscore">单位：标准差（序列自身均值 = 0）</string>
-    <string name="compare_scale_minmax">单位：极差比例（序列自身最小值 = 0，最大值 = 1）</string>
-    <string name="compare_scale_baseline">单位：指数（序列自身首个观测 = 100）</string>
+    <string name="compare_title">Compare metrics</string>
+    <string name="compare_mode_zscore">Z-score</string>
+    <string name="compare_mode_minmax">Min–max</string>
+    <string name="compare_mode_baseline">Baseline 100</string>
+    <string name="compare_pick_metrics">Metrics to compare</string>
+    <string name="compare_selected">%1$d selected</string>
+    <string name="compare_need_two">Select at least 2 metrics</string>
+    <string name="compare_unavailable">%1$s cannot be normalised this way</string>
+    <string name="compare_normalization_note">Normalisation is an in-memory display projection only; the stored observations are never rewritten.</string>
+    <string name="compare_scale_zscore">Unit: standard deviations (each series has mean 0)</string>
+    <string name="compare_scale_minmax">Unit: fraction of range (each series spans 0 to 1)</string>
+    <string name="compare_scale_baseline">Unit: index (each series starts at 100)</string>
 
     <!-- Nutrition ingestion -->
-    <string name="nutrition_title">营养记录</string>
-    <string name="nutrition_day_today">今天</string>
-    <string name="nutrition_day_prev">前一天</string>
-    <string name="nutrition_day_next">后一天</string>
-    <string name="nutrition_meal_breakfast">早餐</string>
-    <string name="nutrition_meal_lunch">午餐</string>
-    <string name="nutrition_meal_dinner">晚餐</string>
-    <string name="nutrition_meal_snack">加餐</string>
-    <string name="nutrition_search_hint">搜索食物，例如"米饭"</string>
-    <string name="nutrition_search_title">食物库</string>
-    <string name="nutrition_search_empty">还没有匹配的食物。输入名称会同时搜索你的食物库和内置词库（约 200 种常见食材），也可以新建一个自定义食物。</string>
-    <string name="nutrition_new_food">新建自定义食物</string>
-    <string name="nutrition_food_name">食物名称</string>
-    <string name="nutrition_reference_amount">参考分量</string>
-    <string name="nutrition_reference_unit">参考单位</string>
+    <string name="nutrition_title">Food diary</string>
+    <string name="nutrition_day_today">Today</string>
+    <string name="nutrition_day_prev">Previous day</string>
+    <string name="nutrition_day_next">Next day</string>
+    <string name="nutrition_meal_breakfast">Breakfast</string>
+    <string name="nutrition_meal_lunch">Lunch</string>
+    <string name="nutrition_meal_dinner">Dinner</string>
+    <string name="nutrition_meal_snack">Snack</string>
+    <string name="nutrition_search_hint">Search foods, e.g. “rice”</string>
+    <string name="nutrition_search_title">Food library</string>
+    <string name="nutrition_search_empty">Nothing matches yet. Typing searches your own foods and the built-in lexicon of about 200 common ingredients at the same time — or create a custom food.</string>
+    <string name="nutrition_new_food">New custom food</string>
+    <string name="nutrition_food_name">Food name</string>
+    <string name="nutrition_reference_amount">Reference amount</string>
+    <string name="nutrition_reference_unit">Reference unit</string>
     <string name="nutrition_reference_unit_hint">g / ml / piece / serving</string>
-    <string name="nutrition_reference_line">参考量：每 %1$s %2$s</string>
-    <string name="nutrition_at_least_one_nutrient">至少填写一个大于 0 的营养素</string>
-    <string name="nutrition_meals_title">当日记录</string>
-    <string name="nutrition_meals_empty">这一天还没有记录</string>
-    <string name="nutrition_totals_title">当日摄入合计</string>
-    <string name="nutrition_totals_empty">记录一餐后这里会自动汇总（经 metric_observations 投影）</string>
+    <string name="nutrition_reference_line">Reference: per %1$s %2$s</string>
+    <string name="nutrition_at_least_one_nutrient">Enter at least one nutrient above 0</string>
+    <string name="nutrition_meals_title">This day</string>
+    <string name="nutrition_meals_empty">Nothing logged on this day</string>
+    <string name="nutrition_totals_title">Intake today</string>
+    <string name="nutrition_totals_empty">Log a meal and the totals appear here, projected through metric_observations</string>
     <string name="nutrition_totals_progress">%1$s / %2$s %3$s</string>
-    <string name="nutrition_add_meal_title">记录摄入</string>
-    <string name="nutrition_actual_amount">实际摄入量</string>
-    <string name="nutrition_estimate_title">预计摄入</string>
-    <string name="nutrition_meal_type">餐次</string>
-    <string name="nutrition_delete_meal">删除这条记录</string>
-    <string name="nutrition_invalid_amount">请输入大于 0 的数值</string>
-    <string name="nutrition_no_food_selected">先在上方选择一个食物</string>
+    <string name="nutrition_add_meal_title">Log intake</string>
+    <string name="nutrition_actual_amount">Amount consumed</string>
+    <string name="nutrition_estimate_title">Estimated intake</string>
+    <string name="nutrition_meal_type">Meal</string>
+    <string name="nutrition_delete_meal">Delete this entry</string>
+    <string name="nutrition_invalid_amount">Enter a number above 0</string>
+    <string name="nutrition_no_food_selected">Pick a food above first</string>
 
     <!-- Nutrition lookup (AGENTS.md §5.2 / §5.3) -->
-    <string name="nutrition_source_personal">我的食物库</string>
-    <string name="nutrition_source_bundled">内置词库</string>
-    <string name="nutrition_source_remote">联网数据库</string>
-    <string name="nutrition_source_estimate">AI 估算</string>
-    <string name="nutrition_resolving">正在获取营养数据…</string>
-    <string name="nutrition_lookup_failed">无法获取该食物的营养数据</string>
-    <string name="nutrition_confirm_title">确认识别结果</string>
-    <string name="nutrition_confirm_note">以下数值来自参考数据库，保存前可自行修改。确认后存入本地，之后离线可用。</string>
-    <string name="nutrition_confirm_source">来源：%1$s · 记录 %2$s</string>
-    <string name="nutrition_confirm_save">确认并保存</string>
+    <string name="nutrition_source_personal">My foods</string>
+    <string name="nutrition_source_bundled">Built-in lexicon</string>
+    <string name="nutrition_source_remote">Online database</string>
+    <string name="nutrition_source_estimate">AI estimate</string>
+    <string name="nutrition_resolving">Fetching nutrient values…</string>
+    <string name="nutrition_lookup_failed">Could not fetch nutrient values for that food</string>
+    <string name="nutrition_confirm_title">Confirm values</string>
+    <string name="nutrition_confirm_note">These figures come from a reference database. Edit anything before saving; once saved they work offline.</string>
+    <string name="nutrition_confirm_source">Source: %1$s · record %2$s</string>
+    <string name="nutrition_confirm_save">Confirm and save</string>
+
+    <!-- Language. The app has no picker of its own; this only opens the system per-app setting. -->
+    <string name="language_unavailable">Could not open the system language settings</string>
+
+    <!--
+      Nutrient names. A food stores its nutrient values by id, and the definition row keeps a
+      canonical (English) name; these are the localised names shown whenever the id is one the app
+      knows. An unknown id — a nutrient the user invented — falls back to the stored name.
+    -->
+    <string name="nutrient_calories">Energy</string>
+    <string name="nutrient_protein">Protein</string>
+    <string name="nutrient_carbohydrates">Carbohydrate</string>
+    <string name="nutrient_fat">Fat</string>
+    <string name="nutrient_fiber">Dietary fibre</string>
+    <string name="nutrient_sugar">Sugar</string>
+    <string name="nutrient_saturated_fat">Saturated fat</string>
+    <string name="nutrient_monounsaturated_fat">Monounsaturated fat</string>
+    <string name="nutrient_polyunsaturated_fat">Polyunsaturated fat</string>
+    <string name="nutrient_cholesterol">Cholesterol</string>
+    <string name="nutrient_sodium">Sodium</string>
+    <string name="nutrient_potassium">Potassium</string>
+    <string name="nutrient_calcium">Calcium</string>
+    <string name="nutrient_iron">Iron</string>
+    <string name="nutrient_magnesium">Magnesium</string>
+    <string name="nutrient_phosphorus">Phosphorus</string>
+    <string name="nutrient_zinc">Zinc</string>
+    <string name="nutrient_vitamin_a">Vitamin A</string>
+    <string name="nutrient_vitamin_c">Vitamin C</string>
+    <string name="nutrient_vitamin_d">Vitamin D</string>
+    <string name="nutrient_vitamin_b12">Vitamin B12</string>
+    <string name="nutrient_folate">Folate</string>
 
     <!-- Symbols. Not prose, so they stay untranslated. -->
     <string name="trend_glyph_up" translatable="false">↗</string>

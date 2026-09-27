@@ -42,6 +42,7 @@ import com.healthtrend.ui.chart.MetricDetailChart
 import com.healthtrend.ui.chart.chartX
 import com.healthtrend.ui.common.TimeRange
 import com.healthtrend.ui.common.labelRes
+import com.healthtrend.ui.common.metricDisplayName
 import com.healthtrend.ui.components.ChoiceChips
 import com.healthtrend.ui.components.ChartLegend
 import com.healthtrend.ui.components.LegendEntry
@@ -91,7 +92,7 @@ private fun MetricDetailContent(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(state.definition?.name ?: stringResource(R.string.detail_title)) },
+                title = { Text(state.definition?.let { metricDisplayName(it) } ?: stringResource(R.string.detail_title)) },
                 navigationIcon = {
                     TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) }
                 },
@@ -297,11 +298,11 @@ private fun previewDetailState(zoneId: ZoneId): MetricDetailUiState {
     val anomaly = AnomalyDetection.detect(series)
     val definition = MetricDefinition(
         id = "body_weight",
-        name = "体重",
+        name = "Body weight",
         category = MetricCategory.BODY,
         unit = "kg",
         dataType = MetricDataType.NUMERIC,
-        description = "晨起空腹体重",
+        description = "Fasted morning weight",
         expectedFrequency = "DAILY",
         minValue = 0.0,
         maxValue = 300.0,
