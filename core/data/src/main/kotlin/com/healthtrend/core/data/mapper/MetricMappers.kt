@@ -4,12 +4,17 @@ import com.healthtrend.core.data.local.ObservationSources
 import com.healthtrend.core.data.local.entity.MetricDefinitionEntity
 import com.healthtrend.core.data.local.entity.MetricObservationEntity
 import com.healthtrend.core.domain.model.MetricCategory
+import com.healthtrend.core.domain.model.MetricConcern
 import com.healthtrend.core.domain.model.MetricDataType
 import com.healthtrend.core.domain.model.MetricDefinition
 import com.healthtrend.core.domain.model.MetricObservation
 
 internal inline fun <reified T : Enum<T>> enumOrDefault(name: String, default: T): T =
     enumValues<T>().firstOrNull { it.name.equals(name, ignoreCase = true) } ?: default
+
+/** Like [enumOrDefault], but "absent" stays absent instead of collapsing into a default. */
+internal inline fun <reified T : Enum<T>> enumOrNull(name: String?): T? =
+    name?.let { stored -> enumValues<T>().firstOrNull { it.name.equals(stored, ignoreCase = true) } }
 
 fun MetricDefinitionEntity.toDomain(): MetricDefinition = MetricDefinition(
     id = id,
@@ -25,6 +30,7 @@ fun MetricDefinitionEntity.toDomain(): MetricDefinition = MetricDefinition(
     referenceRangeHigh = referenceRangeHigh,
     isBuiltIn = isBuiltIn,
     displayOrder = displayOrder,
+    concern = enumOrNull<MetricConcern>(concernDirection),
 )
 
 fun MetricDefinition.toEntity(): MetricDefinitionEntity = MetricDefinitionEntity(
@@ -41,6 +47,7 @@ fun MetricDefinition.toEntity(): MetricDefinitionEntity = MetricDefinitionEntity
     referenceRangeHigh = referenceRangeHigh,
     isBuiltIn = isBuiltIn,
     displayOrder = displayOrder,
+    concernDirection = concern?.name,
 )
 
 fun MetricObservationEntity.toDomain(): MetricObservation = MetricObservation(

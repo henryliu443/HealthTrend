@@ -122,6 +122,24 @@ private fun MetricDetailContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                // Which end of that range is the one usually watched. Stated once, plainly, with the
+                // caveat attached — the app may describe a reference range, never judge a reading
+                // (AGENTS.md §10.3).
+                definition.concern?.let { concern ->
+                    Column {
+                        Text(
+                            text = stringResource(R.string.detail_concern_label) + ": " +
+                                stringResource(concern.labelRes),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = stringResource(R.string.detail_concern_note),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
 
             ChoiceChips(

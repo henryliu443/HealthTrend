@@ -62,6 +62,7 @@
     <string name="dashboard_new_metric_title">新建指标</string>
     <string name="dashboard_metric_name">指标名称</string>
     <string name="dashboard_metric_unit">单位（如 kg、mmHg、g）</string>
+    <string name="dashboard_metric_concern">关注方向（可选）</string>
 
     <!-- Export (AGENTS.md §10.4: reading the database never writes to it) -->
     <string name="export_file_name">healthtrend-%1$s.zip</string>
@@ -104,6 +105,12 @@
     <string name="detail_quality_days">%1$s 天</string>
     <string name="detail_quality_span">跨度</string>
     <string name="detail_reference_range">参考区间 %1$s – %2$s %3$s</string>
+    <string name="detail_concern_label">关注方向</string>
+    <string name="detail_concern_note">标注参考区间中通常被关注的一端。只作读数提示，不构成诊断。</string>
+    <string name="concern_higher">偏高</string>
+    <string name="concern_lower">偏低</string>
+    <string name="concern_both">两端</string>
+    <string name="concern_not_stated">不标注</string>
     <string name="detail_disclaimer">统计相关不等于因果关联；本应用不提供任何医疗诊断。</string>
 
     <!-- Multi-metric comparison (§7.3) -->
@@ -144,6 +151,7 @@
     <string name="nutrition_totals_title">当日摄入合计</string>
     <string name="nutrition_totals_empty">记录一餐后这里会自动汇总（经 metric_observations 投影）</string>
     <string name="nutrition_totals_progress">%1$s / %2$s %3$s</string>
+    <string name="nutrition_totals_upper_limits">上限型参考值（不是摄入目标）：%1$s</string>
     <string name="nutrition_add_meal_title">记录摄入</string>
     <string name="nutrition_actual_amount">实际摄入量</string>
     <string name="nutrition_estimate_title">预计摄入</string>

@@ -38,11 +38,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.healthtrend.R
 import com.healthtrend.core.domain.model.MetricCategory
+import com.healthtrend.core.domain.model.MetricConcern
 import com.healthtrend.core.domain.model.MetricDataType
 import com.healthtrend.core.domain.model.MetricDefinition
 import com.healthtrend.core.domain.model.MetricLatestValue
 import com.healthtrend.ui.common.labelRes
 import com.healthtrend.ui.common.metricDisplayName
+import com.healthtrend.ui.components.ChoiceChips
 import com.healthtrend.ui.components.SectionCard
 import com.healthtrend.ui.format.Formatters
 import com.healthtrend.ui.theme.HealthTrendTheme
@@ -84,7 +86,7 @@ private fun DashboardContent(
     onOpenCompare: () -> Unit,
     onOpenNutrition: () -> Unit,
     onLoadDemoData: () -> Unit,
-    onAddMetric: (name: String, unit: String) -> Unit,
+    onAddMetric: (name: String, unit: String, concern: MetricConcern?) -> Unit,
     onAddObservation: (metricId: String, value: Double) -> Unit,
     onMessageShown: () -> Unit,
     modifier: Modifier = Modifier,
@@ -168,8 +170,8 @@ private fun DashboardContent(
     if (showAddMetricDialog) {
         NewMetricDialog(
             onDismiss = { showAddMetricDialog = false },
-            onConfirm = { name, unit ->
-                onAddMetric(name, unit)
+            onConfirm = { name, unit, concern ->
+                onAddMetric(name, unit, concern)
                 showAddMetricDialog = false
             },
         )
@@ -235,10 +237,11 @@ private fun MetricCardRow(
 @Composable
 private fun NewMetricDialog(
     onDismiss: () -> Unit,
-    onConfirm: (name: String, unit: String) -> Unit,
+    onConfirm: (name: String, unit: String, concern: MetricConcern?) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
     var unit by remember { mutableStateOf("") }
+    var concern by remember { mutableStateOf<MetricConcern?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dashboard_new_metric_title)) },
@@ -256,12 +259,25 @@ private fun NewMetricDialog(
                     label = { Text(stringResource(R.string.dashboard_metric_unit)) },
                     singleLine = true,
                 )
+                Text(
+                    text = stringResource(R.string.dashboard_metric_concern),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                ChoiceChips(
+                    options = CONCERN_OPTIONS,
+                    selected = concern,
+                    label = { option ->
+                        option?.let { stringResource(it.labelRes) }
+                            ?: stringResource(R.string.concern_not_stated)
+                    },
+                    onSelect = { concern = it },
+                )
             }
         },
         confirmButton = {
             TextButton(
                 enabled = name.isNotBlank(),
-                onClick = { onConfirm(name, unit) },
+                onClick = { onConfirm(name, unit, concern) },
             ) {
                 Text(stringResource(R.string.action_confirm))
             }
@@ -271,6 +287,14 @@ private fun NewMetricDialog(
         },
     )
 }
+
+/** `null` first, so "not stated" is the default and reads as the neutral option it is. */
+private val CONCERN_OPTIONS: List<MetricConcern?> = listOf(
+    null,
+    MetricConcern.HIGHER_VALUES,
+    MetricConcern.LOWER_VALUES,
+    MetricConcern.BOTH_ENDS,
+)
 
 @Composable
 private fun AddObservationDialog(
@@ -400,7 +424,7 @@ private fun DashboardPreview() {
             onOpenCompare = {},
             onOpenNutrition = {},
             onLoadDemoData = {},
-            onAddMetric = { _, _ -> },
+            onAddMetric = { _, _, _ -> },
             onAddObservation = { _, _ -> },
             onMessageShown = {},
         )
@@ -418,7 +442,7 @@ private fun DashboardEmptyPreview() {
             onOpenCompare = {},
             onOpenNutrition = {},
             onLoadDemoData = {},
-            onAddMetric = { _, _ -> },
+            onAddMetric = { _, _, _ -> },
             onAddObservation = { _, _ -> },
             onMessageShown = {},
         )

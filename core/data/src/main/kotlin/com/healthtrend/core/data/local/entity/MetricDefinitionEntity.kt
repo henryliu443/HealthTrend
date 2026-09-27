@@ -26,4 +26,5 @@ data class MetricDefinitionEntity(
     val referenceRangeHigh: Double?,
     val isBuiltIn: Boolean,
     val displayOrder: Int,
+    val concernDirection: String? = null, // MetricConcern.name, or null when not stated
 )

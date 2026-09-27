@@ -45,6 +45,7 @@ import com.healthtrend.core.domain.model.FoodNutrientValue
 import com.healthtrend.core.domain.model.FoodWithNutrients
 import com.healthtrend.core.domain.model.MealLog
 import com.healthtrend.core.domain.model.MealType
+import com.healthtrend.core.domain.model.MetricConcern
 import com.healthtrend.core.domain.model.NutrientDefinition
 import com.healthtrend.core.domain.nutrition.NutrientCatalog
 import com.healthtrend.core.domain.nutrition.NutrientMath
@@ -258,6 +259,21 @@ private fun NutritionContent(
                                     total.nutrient.unit,
                                 )
                             } ?: Formatters.valueWithUnit(total.amount, total.nutrient.unit),
+                        )
+                    }
+                    // Some of those figures are ceilings, not quotas, and a list of numbers cannot
+                    // say so on its own.
+                    val ceilings = state.totals
+                        .filter { NutrientCatalog.concernById[it.nutrient.id] == MetricConcern.HIGHER_VALUES }
+                        .map { nutrientName(it.nutrient.id, it.nutrient.name) }
+                    if (ceilings.isNotEmpty()) {
+                        Text(
+                            text = stringResource(
+                                R.string.nutrition_totals_upper_limits,
+                                ceilings.joinToString(", "),
+                            ),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }

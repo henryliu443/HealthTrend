@@ -1,5 +1,6 @@
 package com.healthtrend.core.domain.nutrition
 
+import com.healthtrend.core.domain.model.MetricConcern
 import com.healthtrend.core.domain.model.NutrientCategory
 import com.healthtrend.core.domain.model.NutrientDefinition
 
@@ -61,6 +62,32 @@ object NutrientCatalog {
 
     /** Lookup by id, for turning a stored `nutrient_*` metric id back into metadata. */
     val byId: Map<String, NutrientDefinition> = ALL.associateBy { it.id }
+
+    /**
+     * Which end of a nutrient's reference intake is the one usually watched.
+     *
+     * For most nutrients an intake figure is a *target* — falling short is the watched end. For the
+     * four whose guidance is an upper limit rather than a goal (added sugar, saturated fat,
+     * cholesterol, sodium) the watched end is the top, and the diary's totals use that to say which
+     * numbers are ceilings rather than quotas. It is also why three of those four carry no
+     * [NutrientDefinition.dailyRecommended] at all: a limit is not a target, and printing one beside
+     * the other invites reading it as one.
+     *
+     * The remaining fat fractions are absent rather than guessed at — there is no intake direction
+     * to state for them. Nothing here is medical advice (AGENTS.md §10.3).
+     */
+    val concernById: Map<String, MetricConcern> = buildMap {
+        // Limits: keep under these.
+        listOf("sugar", "saturated_fat", "cholesterol", "sodium").forEach {
+            put(it, MetricConcern.HIGHER_VALUES)
+        }
+        // Targets: reach these.
+        listOf(
+            "calories", "protein", "carbohydrates", "fat", "fiber",
+            "potassium", "calcium", "iron", "magnesium", "phosphorus", "zinc",
+            "vitamin_a", "vitamin_c", "vitamin_d", "vitamin_b12", "folate",
+        ).forEach { put(it, MetricConcern.LOWER_VALUES) }
+    }
 
     /** Display order of [ids], for ordering a set of nutrients that a food happens to contain. */
     fun sortByDisplayOrder(ids: Collection<String>): List<String> =

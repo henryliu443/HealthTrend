@@ -33,7 +33,7 @@ import com.healthtrend.core.data.local.entity.NutrientDefinitionEntity
         FoodNutrientValueEntity::class,
         MealLogEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(CommonConverters::class)
@@ -50,11 +50,13 @@ abstract class HealthTrendDatabase : RoomDatabase() {
         const val NAME = "healthtrend.db"
 
         /**
-         * NOTE: intentionally no `fallbackToDestructiveMigration()` — AGENTS.md 4.5 forbids it
-         * in release. Until the first migration exists this only ever creates schema v1.
+         * NOTE: intentionally no `fallbackToDestructiveMigration()` — AGENTS.md 4.5 forbids it in
+         * release. Fresh installs create the current schema; an existing database is brought forward
+         * by [ALL_MIGRATIONS].
          */
         fun build(context: Context): HealthTrendDatabase =
             Room.databaseBuilder(context.applicationContext, HealthTrendDatabase::class.java, NAME)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
     }
 }

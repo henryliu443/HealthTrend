@@ -5,6 +5,7 @@ import com.healthtrend.core.domain.model.FoodItem
 import com.healthtrend.core.domain.model.MealLog
 import com.healthtrend.core.domain.model.MealType
 import com.healthtrend.core.domain.model.MetricCategory
+import com.healthtrend.core.domain.model.MetricConcern
 import com.healthtrend.core.domain.model.MetricDataType
 import com.healthtrend.core.domain.model.MetricDefinition
 import com.healthtrend.core.domain.model.MetricObservation
@@ -147,6 +148,7 @@ class DemoDataSeeder(
                     referenceRangeHigh = seed.referenceRangeHigh,
                     isBuiltIn = true,
                     displayOrder = seed.displayOrder,
+                    concern = seed.concern,
                 ),
             )
             seed.observations.forEach { (daysAgo, value) ->
@@ -209,13 +211,13 @@ class DemoDataSeeder(
                 id = "body_weight", name = "Body weight", category = MetricCategory.BODY, unit = "kg",
                 description = "Fasted, first thing in the morning", expectedFrequency = "DAILY",
                 minValue = 0.0, maxValue = 300.0, referenceRangeLow = null, referenceRangeHigh = null,
-                displayOrder = 10, observations = weight,
+                displayOrder = 10, observations = weight, concern = MetricConcern.BOTH_ENDS,
             ),
             MetricSeed(
                 id = "body_fat_percent", name = "Body fat", category = MetricCategory.BODY, unit = "%",
                 description = "Bioimpedance; for watching the trend only", expectedFrequency = "WEEKLY",
                 minValue = 0.0, maxValue = 80.0, referenceRangeLow = 10.0, referenceRangeHigh = 25.0,
-                displayOrder = 20, observations = bodyFat,
+                displayOrder = 20, observations = bodyFat, concern = MetricConcern.HIGHER_VALUES,
             ),
             MetricSeed(
                 id = "resting_heart_rate", name = "Resting heart rate", category = MetricCategory.BODY,
@@ -223,48 +225,65 @@ class DemoDataSeeder(
                 expectedFrequency = "DAILY",
                 minValue = 0.0, maxValue = 250.0, referenceRangeLow = 50.0, referenceRangeHigh = 70.0,
                 displayOrder = 30, observations = restingHeartRate,
+                concern = MetricConcern.HIGHER_VALUES,
             ),
             MetricSeed(
                 id = "blood_pressure_systolic", name = "Systolic blood pressure",
                 category = MetricCategory.HEALTH,
                 unit = "mmHg", description = "Upper-arm cuff", expectedFrequency = "EVERY_3_DAYS",
                 minValue = 0.0, maxValue = 300.0, referenceRangeLow = 90.0, referenceRangeHigh = 120.0,
-                displayOrder = 40, observations = systolic,
+                displayOrder = 40, observations = systolic, concern = MetricConcern.HIGHER_VALUES,
             ),
             MetricSeed(
                 id = "blood_pressure_diastolic", name = "Diastolic blood pressure",
                 category = MetricCategory.HEALTH,
                 unit = "mmHg", description = "Upper-arm cuff", expectedFrequency = "EVERY_3_DAYS",
                 minValue = 0.0, maxValue = 200.0, referenceRangeLow = 60.0, referenceRangeHigh = 80.0,
-                displayOrder = 50, observations = diastolic,
+                displayOrder = 50, observations = diastolic, concern = MetricConcern.HIGHER_VALUES,
             ),
             MetricSeed(
                 id = "alt", name = "ALT", category = MetricCategory.HEALTH, unit = "U/L",
                 description = "Alanine aminotransferase, liver panel",
                 expectedFrequency = "MONTHLY",
                 minValue = 0.0, maxValue = 2000.0, referenceRangeLow = 7.0, referenceRangeHigh = 40.0,
-                displayOrder = 60,
+                displayOrder = 60, concern = MetricConcern.HIGHER_VALUES,
                 observations = listOf(84 to 32.0, 63 to 29.0, 42 to 38.0, 21 to 26.0, 0 to 22.0),
+            ),
+            MetricSeed(
+                id = "ast", name = "AST", category = MetricCategory.HEALTH, unit = "U/L",
+                description = "Aspartate aminotransferase, liver panel",
+                expectedFrequency = "MONTHLY",
+                minValue = 0.0, maxValue = 2000.0, referenceRangeLow = 5.0, referenceRangeHigh = 40.0,
+                displayOrder = 62, concern = MetricConcern.HIGHER_VALUES,
+                observations = listOf(84 to 28.0, 63 to 26.0, 42 to 33.0, 21 to 24.0, 0 to 21.0),
+            ),
+            MetricSeed(
+                id = "serum_total_cholesterol", name = "Total cholesterol",
+                category = MetricCategory.HEALTH, unit = "mmol/L",
+                description = "Fasting lipid panel", expectedFrequency = "MONTHLY",
+                minValue = 0.0, maxValue = 30.0, referenceRangeLow = 3.0, referenceRangeHigh = 5.2,
+                displayOrder = 65, concern = MetricConcern.HIGHER_VALUES,
+                observations = listOf(90 to 5.9, 60 to 5.6, 30 to 5.3, 0 to 5.1),
             ),
             MetricSeed(
                 id = "serum_uric_acid", name = "Uric acid", category = MetricCategory.HEALTH,
                 unit = "μmol/L", description = "Serum uric acid", expectedFrequency = "MONTHLY",
                 minValue = 0.0, maxValue = 1500.0, referenceRangeLow = 208.0, referenceRangeHigh = 428.0,
-                displayOrder = 70,
+                displayOrder = 70, concern = MetricConcern.HIGHER_VALUES,
                 observations = listOf(75 to 430.0, 50 to 415.0, 25 to 398.0, 0 to 380.0),
             ),
             MetricSeed(
                 id = "sleep_duration", name = "Sleep duration", category = MetricCategory.LIFESTYLE,
                 unit = "h", description = "Total sleep the night before", expectedFrequency = "DAILY",
                 minValue = 0.0, maxValue = 24.0, referenceRangeLow = 7.0, referenceRangeHigh = 9.0,
-                displayOrder = 80, observations = sleep,
+                displayOrder = 80, observations = sleep, concern = MetricConcern.BOTH_ENDS,
             ),
             MetricSeed(
                 id = "daily_steps", name = "Daily steps", category = MetricCategory.ACTIVITY,
                 unit = "steps",
                 description = "Steps accumulated during the day", expectedFrequency = "DAILY",
                 minValue = 0.0, maxValue = 100000.0, referenceRangeLow = 6000.0, referenceRangeHigh = null,
-                displayOrder = 90, observations = steps,
+                displayOrder = 90, observations = steps, concern = MetricConcern.LOWER_VALUES,
             ),
         )
     }
@@ -324,6 +343,8 @@ class DemoDataSeeder(
         val referenceRangeLow: Double?,
         val referenceRangeHigh: Double?,
         val displayOrder: Int,
+        /** Which end of the reference range is the watched one; `null` when the metric does not say. */
+        val concern: MetricConcern? = null,
         /** `(daysAgo, value)` pairs; `daysAgo` is relative to today. */
         val observations: List<Pair<Int, Double>>,
     )

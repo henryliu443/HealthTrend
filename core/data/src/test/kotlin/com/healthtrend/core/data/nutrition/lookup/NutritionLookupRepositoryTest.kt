@@ -114,6 +114,11 @@ class NutritionLookupRepositoryTest {
         val unused = NutrientCatalog.ALL.map { it.id } - used
         unused shouldBe emptySet()
 
+        // The intake-direction map is keyed by nutrient id and is deliberately *not* part of the
+        // stored definition, so nothing but a test can keep it from drifting.
+        (NutrientCatalog.concernById.keys - NutrientCatalog.byId.keys) shouldBe emptySet()
+        NutrientCatalog.concernById.keys.shouldNotBeEmpty()
+
         // The specific recall of AGENTS.md 1.1: the reference amount is arbitrary, so the app must
         // ship more than one kind of basis, not just 100 g.
         val units = BUNDLED_LEXICON.map { it.referenceUnit }.toSet()

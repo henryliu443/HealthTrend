@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.healthtrend.R
 import com.healthtrend.core.domain.model.MetricCategory
+import com.healthtrend.core.domain.model.MetricConcern
 import com.healthtrend.core.domain.model.MetricDataType
 import com.healthtrend.core.domain.model.MetricDefinition
 import com.healthtrend.core.domain.model.MetricLatestValue
@@ -107,7 +108,7 @@ class DashboardViewModel(
     }
 
     /** Creates a user-defined metric (AGENTS.md calls this out as the `CUSTOM` category). */
-    fun addMetric(name: String, unit: String) {
+    fun addMetric(name: String, unit: String, concern: MetricConcern?) {
         val trimmedName = name.trim()
         if (trimmedName.isEmpty()) return
         viewModelScope.launch {
@@ -126,6 +127,7 @@ class DashboardViewModel(
                     referenceRangeHigh = null,
                     isBuiltIn = false,
                     displayOrder = CUSTOM_DISPLAY_ORDER,
+                    concern = concern,
                 ),
             )
         }

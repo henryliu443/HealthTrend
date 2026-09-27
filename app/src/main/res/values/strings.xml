@@ -64,6 +64,7 @@
     <string name="dashboard_new_metric_title">New metric</string>
     <string name="dashboard_metric_name">Metric name</string>
     <string name="dashboard_metric_unit">Unit (kg, mmHg, g, …)</string>
+    <string name="dashboard_metric_concern">Watch for (optional)</string>
 
     <!-- Export (AGENTS.md §10.4: reading the database never writes to it) -->
     <string name="export_file_name">healthtrend-%1$s.zip</string>
@@ -106,6 +107,12 @@
     <string name="detail_quality_days">%1$s days</string>
     <string name="detail_quality_span">Span</string>
     <string name="detail_reference_range">Reference range %1$s – %2$s %3$s</string>
+    <string name="detail_concern_label">Watch for</string>
+    <string name="detail_concern_note">Which end of the reference range is usually the one watched. A reading aid, not a diagnosis.</string>
+    <string name="concern_higher">Higher values</string>
+    <string name="concern_lower">Lower values</string>
+    <string name="concern_both">Both ends</string>
+    <string name="concern_not_stated">Not stated</string>
     <string name="detail_disclaimer">Correlation is not causation; this app provides no medical diagnosis.</string>
 
     <!-- Multi-metric comparison (§7.3) -->
@@ -146,6 +153,7 @@
     <string name="nutrition_totals_title">Intake today</string>
     <string name="nutrition_totals_empty">Log a meal and the totals appear here, projected through metric_observations</string>
     <string name="nutrition_totals_progress">%1$s / %2$s %3$s</string>
+    <string name="nutrition_totals_upper_limits">Upper limits, not targets: %1$s</string>
     <string name="nutrition_add_meal_title">Log intake</string>
     <string name="nutrition_actual_amount">Amount consumed</string>
     <string name="nutrition_estimate_title">Estimated intake</string>
