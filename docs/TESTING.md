@@ -1,13 +1,12 @@
-# Testing HealthTrend
+# HealthTrend 测试指南
 
-Three layers, cheapest first: automated tests, then Android Studio previews, then a device. Most
-mistakes are caught by the first two, so work down in order rather than starting on the phone.
+三层，从便宜到贵：自动化测试 → Android Studio 预览 → 真机。绝大多数错误前两层就能抓到，所以按顺序往下走，别一上来就上手机。
 
-Setup (JDK, SDK, mirrors) is in `development-setup.md`; this file assumes it is done.
+环境准备（JDK、SDK、镜像）见 `development-setup.md`，这里假定已经做完。
 
 ---
 
-## 1. Build
+## 1. 构建
 
 ```bash
 export JAVA_HOME=/opt/homebrew/opt/openjdk@17
@@ -15,124 +14,89 @@ export PATH="$JAVA_HOME/bin:$PATH"
 export ANDROID_HOME="$HOME/Library/Android/sdk"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
 
-./gradlew build            # lint + release APK + every unit test
-./gradlew installDebug     # onto a connected device
+./gradlew build            # lint + release APK + 全部单测
+./gradlew installDebug     # 装到已连接设备
 ```
 
-A **debug** build seeds about three months of demo data on first launch, so the app has something to
-show. A **release** build does not — it starts empty, which is what a real user sees. Test the empty
-states in release.
+**debug** 包首次启动会种入约三个月的演示数据，所以有东西可看。**release** 包不会——它开局是空的，也就是真实用户看到的样子。**空状态要在 release 里测**。
 
 ---
 
-## 2. Automated tests
+## 2. 自动化测试
 
-| Suite | Covers | Command |
+| 套件 | 覆盖内容 | 命令 |
 |---|---|---|
-| `:core:analytics` (64) | statistics, EWMA, rolling windows, OLS trend and its p-value, anomaly detection, normalisation, downsampling — checked against NumPy/SciPy golden vectors | `./gradlew :core:analytics:test` |
-| `:core:data` (29) | the projection pipeline, the lookup tiers, the schema migration, the export | `./gradlew :core:data:testDebugUnitTest` |
+| `:core:analytics`（64） | 描述性统计、EWMA、滑动窗口、OLS 趋势及其 p 值、异常检测、归一化、降采样——全部对照 NumPy/SciPy 基准向量 | `./gradlew :core:analytics:test` |
+| `:core:data`（29） | 投影管道、查词分层、schema 迁移、导出 | `./gradlew :core:data:testDebugUnitTest` |
 
-Failure output lands in `core/*/build/test-results/`, readable in HTML at
-`core/*/build/reports/tests/`. The golden vectors come from `tools/generate_golden_vectors.py` and are
-committed; the analytics tests load that JSON.
+失败输出在 `core/*/build/test-results/`，HTML 报告在 `core/*/build/reports/tests/`。基准向量由 `tools/generate_golden_vectors.py` 生成并提交，analytics 测试加载那个 JSON。
 
-Two suites are worth knowing about specifically, because they encode rules rather than behaviour:
+有两个套件值得单独知道，因为它们断言的是**规则**而不是**行为**：
 
-- `NutritionLookupRepositoryTest` asserts the tier order, that a food the user already owns is never
-  offered as new, and that saving registers nutrient metadata *before* the value rows (the `RESTRICT`
-  foreign key rejects the other order).
-- `MetricDefinitionMigrationTest` builds a v1 database **from the committed `1.json`**, migrates it,
-  and opens it with Room, which validates the whole resulting schema. If you change an entity, this is
-  the test that tells you the migration did not keep up.
+- `NutritionLookupRepositoryTest`——断言层级顺序；用户已经拥有的食物绝不会被当成新食物提供；保存时先注册营养素元数据**再**写值行（反过来的顺序会被 `RESTRICT` 外键拒绝）。
+- `MetricDefinitionMigrationTest`——用**已提交的 `1.json`** 建出 v1 数据库，跑迁移，再用 Room 打开，由 Room 校验整个结果 schema。改动实体后，就是它告诉你迁移没跟上。
 
 ---
 
-## 3. Previews — no device needed
+## 3. 预览——不需要设备
 
-Nine previews, all rendering real data through the real analytics engine and the real nutrient
-catalogue. In Android Studio open the file and click the gutter icon, or use the Preview tool window.
+九个预览，全部用真实数据、经过真实分析引擎和真实营养素目录渲染。在 Android Studio 里打开文件点左侧 gutter 图标，或用 Preview 工具窗口。
 
-| File | Preview | What to check |
+| 文件 | 预览 | 要看什么 |
 |---|---|---|
-| `dashboard/DashboardScreen.kt` | `DashboardPreview` | category sections in order, latest value per metric |
-| | `DashboardEmptyPreview` | empty state reads well, demo button present |
-| `detail/MetricDetailScreen.kt` | `MetricDetailPreview` | chart layers: raw line, EWMA fit, dotted OLS line, flagged points, reference band; **the `Watch for` row**; the trend badge in the card header |
-| | `MetricDetailEmptyPreview` | no chart, no statistics, no crash |
-| `compare/CompareScreen.kt` | `ComparePreview` | three normalised lines + legend; the "cannot be normalised" error line at the bottom |
-| | `CompareMinMaxPreview` | dark theme, "select at least 2" state |
-| `nutrition/NutritionScreen.kt` | `NutritionPreview` | search rows with provenance badges, selected food, day totals with `value / reference` |
-| | `NutritionConfirmPreview` | **the lookup confirmation sheet** — sized to fit, source cited, every value editable |
-| | `NutritionEmptyPreview` | dark theme, nothing logged |
+| `dashboard/DashboardScreen.kt` | `DashboardPreview` | 分类分区顺序、每个指标的最新值 |
+| | `DashboardEmptyPreview` | 空状态是否读得通、演示按钮在不在 |
+| `detail/MetricDetailScreen.kt` | `MetricDetailPreview` | 图表各层：原始折线、EWMA 拟合、OLS 点线、偏离点、参考带；**「关注方向」那一行**；卡片标题栏里的趋势徽标 |
+| | `MetricDetailEmptyPreview` | 无图表、无统计、不崩 |
+| `compare/CompareScreen.kt` | `ComparePreview` | 三条归一化曲线 + 图例；底部"无法归一化"的错误行 |
+| | `CompareMinMaxPreview` | 深色主题、"至少选 2 个"状态 |
+| `nutrition/NutritionScreen.kt` | `NutritionPreview` | 带来源徽标的搜索结果、已选食物、当日合计的 `数值 / 参考` |
+| | `NutritionConfirmPreview` | **查词确认单**——尺寸是否合身、来源是否标明、每个数值是否可改 |
+| | `NutritionEmptyPreview` | 深色主题、当天无记录 |
 
-Previews render in the default locale (English). To see Chinese without a device, add
-`locale = "zh-rCN"` to a `@Preview` annotation temporarily.
-
----
-
-## 4. Device checklist
-
-The emulator was deliberately not used while building this, so everything below has been verified by
-compilation and preview only. This is the list that needs eyes.
-
-1. **First launch.** Install debug, open it. Expect ~11 metrics across five categories (Body, Health,
-   Lifestyle, Activity, Nutrition), each with a latest value. The Nutrition section should have ~19
-   rows — the nutrients the demo diary contains.
-2. **Metric detail.** Tap *Body weight*. Expect a 90-day chart with a reference band, a raw line, a
-   smoothed line, a dotted trend line and two flagged points; then statistics, a trend card and a
-   data-quality card.
-3. **A directional marker.** Open *Total cholesterol*. The trend badge should read **Falling** while
-   the `Watch for` row says **Higher values**. Nothing should be green or red — the app must not
-   imply that falling is good news.
-4. **Comparison.** Pick three or four metrics and cycle the three normalisation modes. A metric that
-   cannot be normalised (try *Uric acid* under Z-score) should appear as an error line rather than
-   silently vanishing.
-5. **Bilingual search.** In the food diary, search `米饭`, then `rice`. Both should find *Cooked white
-   rice*, and its badge should say **My foods** (the demo already adopted it) — not "Built-in
-   lexicon", which would mean it is being offered as new.
-6. **Adopt a new food.** Search `蓝莓` or `blueberry` (not in the demo diary). Tap it: the
-   confirmation sheet should open, fit on screen without swamping it, name the USDA record it came
-   from, and let you edit any figure. Confirm it, then log 100 g.
-7. **Projection.** After logging, the day's totals should update immediately, and the dashboard's
-   Nutrition section should pick up the new nutrients. This is AGENTS.md §4.3 — the totals are read
-   back out of `metric_observations`, not summed from the diary.
-8. **Export.** Dashboard → *Export* → save to Downloads. Unzip it: eight files. Open
-   `food_items.csv` in a spreadsheet and confirm the names read correctly (the file starts with a
-   UTF-8 BOM for exactly that reason). Open `README.txt` — it should explain the reference-amount
-   arithmetic.
-9. **Language.** Dashboard → *Language*: the **system** per-app language page should open, listing
-   English and 中文. Switch to 中文 and back. UI chrome should change language; **stored names (food
-   names, metric names) should not** — that is deliberate, see `docs/TODO.md`.
-10. **Font.** On a Samsung device the Latin text should be SamsungOne; on anything else, Roboto. Both
-    are correct — the app asks for the device family by name and falls back.
-11. **Dark mode and rotation.** Toggle dark mode: the chart palette must stay legible. Rotate the
-    diary and the detail page.
-12. **Empty state.** Install the release build (or clear app data) and open it: no metrics, and the
-    empty state should offer both "load demo data" (debug only) and the manual entry path.
+预览按默认语言（英文）渲染。想在不接设备的情况下看中文，临时给某个 `@Preview` 加 `locale = "zh-rCN"`。
 
 ---
 
-## 5. Regenerating the two generated artifacts
+## 4. 真机清单
 
-Both are committed; regenerate only when you intend to change them, and expect a reviewable diff.
+构建全程刻意没开模拟器，所以下面每一条都只经过编译和预览验证。这是需要眼睛的部分。
+
+1. **首次启动。** 装 debug 包打开。预期约 11 个指标分布在五个分类（Body / Health / Lifestyle / Activity / Nutrition），每个都有最新值。Nutrition 分区应有约 19 行——演示日记里含有的营养素数量。
+2. **指标详情。** 点 *Body weight*。预期是 90 天图表，带参考带、原始线、平滑线、点状趋势线和两个偏离点；下面是描述性统计、趋势卡片、数据质量卡片。
+3. **方向型指标。** 打开 *Total cholesterol*。趋势徽标应显示 **Falling**，而「关注方向」那一行显示 **Higher values**。**不应该有任何红绿**——下降对上限型指标是好事，但 App 不该替你下这个结论。
+4. **对比。** 选三到四个指标，轮流切三种归一化方式。无法归一化的指标（Z-score 下试 *Uric acid*）应出现为一行错误，而不是悄悄消失。
+5. **中英双语搜索。** 在食物日记里搜 `米饭`，再搜 `rice`。两者都应找到 *Cooked white rice*，且它的徽标显示 **我的食物库**（演示数据已收录它）——如果显示「内置词库」，说明它被当成新食物提供了。
+6. **收录新食物。** 搜 `蓝莓` 或 `blueberry`（演示日记里没有）。点它：确认单应打开、一屏放得下、标出它来自哪条 USDA 记录、且每个数值可改。确认后记 100 g。
+7. **投影。** 记完之后，当日合计应立即更新，仪表盘的 Nutrition 分区应出现新的营养素行。这就是 AGENTS.md §4.3——合计是从 `metric_observations` 读回来的，不是从日记累加的。
+8. **导出。** 仪表盘 → *Export* → 存到 Downloads。解压：应有八个文件。用表格软件打开 `food_items.csv`，确认名称不乱码（文件带 UTF-8 BOM 就是为这个）。打开 `README.txt`——它应解释基准量的换算算法。
+9. **语言。** 仪表盘 → *Language*：应打开**系统的**应用语言页，列出 English 和中文。切到中文再切回来。界面文案应变语言，**但存储的名称（食物名、指标名）不应变**——这是刻意的，见 `docs/TODO.md`。
+10. **字体。** 三星设备上拉丁文字应为 SamsungOne；其他设备是 Roboto。两者都正确——App 是按名字申请设备字体族并回退。
+11. **深色模式与旋转。** 切换深色模式：图表配色必须仍然可辨。旋转日记页和详情页。
+12. **空状态。** 装 release 包（或清除应用数据）打开：没有指标，空状态应同时提供"加载演示数据"（仅 debug）和手动录入入口。
+
+---
+
+## 5. 两个生成物的重新生成
+
+二者都已提交；只在确实想改它们时才重生成，并且预期会出现可评审的 diff。
 
 ```bash
-# NumPy/SciPy golden vectors (needs tools/.venv, see development-setup.md §5)
+# NumPy/SciPy 基准向量（需要 tools/.venv，见 development-setup.md 第 5 节）
 tools/.venv/bin/python tools/generate_golden_vectors.py
 
-# The 205-food lexicon, from USDA FoodData Central (needs the network once, ~6 MB)
-python3 tools/generate_food_lexicon.py            # dry run: resolve and report only
-python3 tools/generate_food_lexicon.py --emit     # write the Kotlin
+# 205 条食物词库，来自 USDA FoodData Central（需联网一次，约 6 MB）
+python3 tools/generate_food_lexicon.py            # 空跑：只解析和报告
+python3 tools/generate_food_lexicon.py --emit     # 写出 Kotlin
 ```
 
-The lexicon generator refuses to emit while any curated food resolves ambiguously, so a failure there
-means a data problem to fix, not a step to skip.
+词库生成器在任何一条策展食物解析有歧义时都会拒绝输出，所以那里报错意味着要修数据，而不是可以跳过的步骤。
 
 ---
 
-## 6. Known gaps
+## 6. 已知空缺
 
-- No instrumented (on-device) tests at all.
-- The demo seeder has never actually run: it compiles, and the food names it searches for are pinned
-  by a test in `:core:data`, but the seeding path itself is unverified.
-- Everything visual — Vico rendering, the pills, the compact dialogs — is unverified on a screen.
-- `docs/TODO.md` lists the deferred work with reasons.
+- 完全没有设备端（instrumented）测试。
+- 演示数据种入**从未真正跑过**：它能编译，它搜索的食物名也由 `:core:data` 的测试锁定，但种入路径本身未经验证。
+- 所有视觉部分——Vico 渲染、胶囊徽标、紧凑弹窗——都没在屏幕上验证过。
+- `docs/TODO.md` 记录了延后项及其原因。

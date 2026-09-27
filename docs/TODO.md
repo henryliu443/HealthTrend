@@ -1,93 +1,60 @@
-# TODO
+# 待办
 
-Deferred work, with the reason it was deferred and what would make it actionable. Nothing here is
-blocked by a design decision — each item is waiting on a *verification* this machine cannot provide,
-on a decision only the product owner can make, or on a phase that has not landed yet.
+延后项，连同"为什么延后"和"什么条件下可以动"。这里没有一项是被设计决定卡住的——每一项都在等：**这台机器给不了的验证**、**只有产品所有者能做的决定**、或者**还没落地的阶段**。
 
-Ordered roughly by when it should be picked up.
+大致按该动手的先后排序。
 
 ---
 
-## 1. Live remote lookup provider (AGENTS.md §5.2, tier 3)
+## 1. 联网食物库 provider（AGENTS.md §5.2，第三层）
 
-**What.** A `NutritionLookupProvider` at `LookupTier.REMOTE` talking to a public food database —
-OpenFoodFacts for branded/barcode lookups, or USDA FoodData Central's live API for items the bundled
-lexicon does not cover.
+**做什么。** 在 `LookupTier.REMOTE` 上实现一个 `NutritionLookupProvider`，对接公开食物数据库——OpenFoodFacts 做品牌/条码查询，或 USDA FoodData Central 的实时 API 补内置词库没有的条目。
 
-**Why it was deferred.** Not because the app is offline-first. *Network is not the obstacle, and it
-never was*: item 2 will need the network too. The obstacle is that a live third-party call cannot be
-**verified** from this machine, and shipping an unverified adapter would mean shipping a code path
-nobody has ever seen return a correct answer. AGENTS.md's verification gate forbids calling that kind
-of work done.
+**为什么延后。** 不是因为 App 是离线优先。**网络从来不是障碍**：第 2 项同样需要联网。障碍是**第三方实时调用在这台机器上无法验证**，而发布一个没人见过它返回正确结果的适配器，等于发布一条谁都不知道对不对的代码路径。AGENTS.md 的验证门禁不允许把这种工作标成"做完"。
 
-**What makes it actionable.** The seam is already in place and tested:
-- `NutritionLookupProvider` + `LookupTier` + `FoodRef` (`:core:domain`).
-- `NutritionLookupRepositoryImpl` orders tiers, de-duplicates by name, routes `profile()` back to the
-  owning provider, and re-labels hits the user already owns — all covered by
-  `NutritionLookupRepositoryTest`.
-- Registration is one `single<NutritionLookupProvider>(named(...))` block in `AppModule`.
+**什么条件下可以动。** 插件点已经就位并有测试覆盖：
 
-So the work is: (a) write the adapter over an injectable HTTP transport port, (b) test the
-JSON→`FoodNutrientProfile` mapping against a canned response, (c) run it once against the real
-endpoint on a network that allows it, and (d) add the `INTERNET` permission. A failing tier is already
-skipped, so degradation to the bundled lexicon is automatic.
+- `NutritionLookupProvider` + `LookupTier` + `FoodRef`（`:core:domain`）。
+- `NutritionLookupRepositoryImpl` 负责层级排序、按名称去重、把 `profile()` 路由回所属 provider、并把用户已拥有的命中重标为"我的"——全部由 `NutritionLookupRepositoryTest` 覆盖。
+- 注册就是 `AppModule` 里一个 `single<NutritionLookupProvider>(named(...))`。
 
-## 2. AI / natural-language estimate provider (AGENTS.md §5.2, tier 4)
+所以要做的是：(a) 在一个可注入的 HTTP 传输端口上写适配器；(b) 用罐头响应测 JSON → `FoodNutrientProfile` 的映射；(c) 在一个允许的网络里对真实端点跑一次；(d) 加 `INTERNET` 权限。某一层失败本来就会被跳过，所以降级到内置词库是自动的。
 
-**What.** "一碗红烧牛肉面加一个荷包蛋" → a rough calorie and nutrient estimate, at
-`LookupTier.ESTIMATE`.
+## 2. AI / 自然语言估算 provider（AGENTS.md §5.2，第四层）
 
-**Why it was deferred.** Same verification problem as item 1, plus it needs a key and a cost policy.
-It is also the lowest-priority tier by construction: the enum already puts it last, so it can never
-displace a measured value.
+**做什么。** "一碗红烧牛肉面加一个荷包蛋" → 粗略的热量和营养素估算，落在 `LookupTier.ESTIMATE`。
 
-**What makes it actionable.** An adapter implementing `NutritionLookupProvider` is sufficient — no
-pipeline change. Two requirements worth stating now so they are not lost: it must set
-`isOfflineCapable = false`, and its output must go through the existing confirmation sheet unchanged,
-because §5.3's "show before saving" matters *more* for a guess than for a database record.
+**为什么延后。** 与第 1 项同样的验证问题，另外还要 key 和成本策略。它按设计就是优先级最低的一层：枚举已把它排在最后，所以它永远不可能顶掉实测值。
 
-## 3. Data importer
+**什么条件下可以动。** 实现 `NutritionLookupProvider` 就够了，管道不用改。有两条要求现在就该写下、免得以后丢掉：必须 `isOfflineCapable = false`；它的输出必须原样走现有的确认单，因为 §5.3 那条"保存前给用户看"**对猜测比对数据库记录更重要**。
 
-**What.** Reading a snapshot (see `DataExporter`) back into the database.
+## 3. 数据导入器
 
-**Why it was deferred.** Deliberately, not for lack of time. Importing into an existing history is
-where a local-first app can silently destroy data: id collisions, partially-applied imports, a
-snapshot from a different schema version, and the question of whether import *merges* or *replaces*
-are all design decisions with no safe default. Export is safe because it only reads; import is not,
-and the export format should be exercised by real use before it is frozen into a restore path.
+**做什么。** 把导出的快照读回数据库（见 `DataExporter`）。
 
-**What makes it actionable.** Decide merge-vs-replace first. The manifest already carries
-`formatVersion` and `databaseVersion` so a future importer can refuse a snapshot it does not
-understand.
+**为什么延后。** 是刻意延后，不是没时间。往已有历史里导入，正是本地优先 App 会**悄悄毁掉数据**的地方：id 冲突、部分成功的导入、来自不同 schema 版本的快照，以及导入到底是**合并**还是**替换**——每个都是没有安全默认值的设计决定。导出只读所以安全；导入不是，而且导出格式应该先被真实使用过，再冻结成恢复路径。
 
-## 4. Broaden the bundled lexicon
+**什么条件下可以动。** 先定合并还是替换。manifest 里已经带了 `formatVersion` 和 `databaseVersion`，将来的导入器可以据此拒绝不认识的快照。
 
-205 foods, all resolved unambiguously from SR Legacy. The gaps are structural, not accidental:
-SR Legacy is a US composition table, so there are no prepared/Chinese dishes (馒头, 饺子, 油条, 豆浆,
-米粥), and a few ingredients have no clean record (莲藕, 空心菜, 荔枝).
+## 4. 扩充内置词库
 
-Two options, in order of preference:
-1. Add FNDDS (`FoodData_Central_survey_food_csv`) as a second source for prepared foods. It is
-   per-100 g like SR Legacy and has `fndds_ingredient` mappings, so the same generator can absorb it.
-2. Expand the curated catalogue within SR Legacy — cheap, but it is running out of well-covered
-   ingredients.
+205 条，全部从 SR Legacy 无歧义解析出来。空缺是结构性的、不是偶然的：SR Legacy 是美国成分表，所以没有中式预制菜（馒头、饺子、油条、豆浆、米粥），另有个别食材没有干净记录（莲藕、空心菜、荔枝）。
 
-Either way the work happens in `tools/food_lexicon_catalog.py`; the generator and the tests are
-already general.
+两个选项，按偏好排序：
 
-## 5. Traditional Chinese
+1. 把 FNDDS（`FoodData_Central_survey_food_csv`）加为第二个数据源以覆盖预制食品。它和 SR Legacy 一样是每 100 g，且有 `fndds_ingredient` 映射，同一个生成器可以吸收它。
+2. 在 SR Legacy 内部继续扩充策展清单——便宜，但覆盖良好的食材快用完了。
 
-Only `values-zh-rCN` ships, so a device set to `zh-TW`/`zh-Hant` falls back to English rather than
-showing Simplified. Adding `values-zh-rTW` plus a second `<locale>` in `locales_config.xml` is
-mechanical, and `docs/TESTING.md` §4 step 9 is where to check it.
+两条路的工作都发生在 `tools/food_lexicon_catalog.py`；生成器和测试已经是通用的。
 
-## 6. Device verification
+## 5. 繁体中文
 
-Everything visual and the demo seeder have been verified by compilation and preview only — the
-emulator was not run. `docs/TESTING.md` §4 is the checklist, with expected results per step, and §6
-lists exactly what is still unproven.
+目前只发 `values-zh-rCN`，所以设备语言是 `zh-TW`/`zh-Hant` 时会回退到英文，而不是显示简体。加 `values-zh-rTW` 并在 `locales_config.xml` 里加第二个 `<locale>` 是机械工作，检查点在 `docs/TESTING.md` §4 第 9 步。
 
-## 7. Koin DSL deprecation
+## 6. 真机验证
 
-`AppModule` uses `org.koin.androidx.viewmodel.dsl.viewModel`, which Koin 4 deprecates in favour of
-`org.koin.core.module.dsl.*`. Pure import churn, but it prints four warnings on every build.
+所有视觉部分和演示数据种入都只经过编译与预览验证——模拟器没跑过。`docs/TESTING.md` §4 是清单，每步都写了期望结果；§6 列出了仍未证实的具体内容。
+
+## 7. Koin DSL 弃用
+
+`AppModule` 用的是 `org.koin.androidx.viewmodel.dsl.viewModel`，Koin 4 已弃用，改用 `org.koin.core.module.dsl.*`。纯粹是改 import，但每次构建都会打四条警告。
