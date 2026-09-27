@@ -50,7 +50,7 @@
     <string name="dashboard_title">HealthTrend</string>
     <string name="dashboard_subtitle">Local-first · your data stays on this device</string>
     <string name="dashboard_empty_title">No metrics yet</string>
-    <string name="dashboard_empty_body">The database is empty. Load the demo data, or add a reading by hand.</string>
+    <string name="dashboard_empty_body">Nothing recorded yet. Add a reading with the + button. Or load demo data — months of invented readings, for looking at the charts and nothing else.</string>
     <string name="dashboard_action_seed_demo">Load demo data</string>
     <plurals name="dashboard_observation_count">
         <item quantity="one">%1$d reading</item>
@@ -59,7 +59,7 @@
     <string name="dashboard_latest_on">Latest %1$s</string>
     <string name="dashboard_action_compare">Compare metrics</string>
     <string name="dashboard_action_nutrition">Food diary</string>
-    <string name="dashboard_action_export">Export data</string>
+    <string name="dashboard_action_export">Export</string>
     <string name="dashboard_add_metric">New metric</string>
     <string name="dashboard_new_metric_title">New metric</string>
     <string name="dashboard_metric_name">Metric name</string>
@@ -203,6 +203,23 @@
     <string name="nutrient_vitamin_d">Vitamin D</string>
     <string name="nutrient_vitamin_b12">Vitamin B12</string>
     <string name="nutrient_folate">Folate</string>
+
+    <!--
+      Names for the metrics the app itself supplies. The stored metric name is a single canonical
+      label; these are what the reader actually sees, resolved by id (see ui/common/BuiltInMetricUi.kt).
+      ALT and AST stay as-is in both languages because that is how they are printed on the report.
+    -->
+    <string name="metric_body_weight">Body weight</string>
+    <string name="metric_body_fat_percent">Body fat</string>
+    <string name="metric_resting_heart_rate">Resting heart rate</string>
+    <string name="metric_blood_pressure_systolic">Systolic blood pressure</string>
+    <string name="metric_blood_pressure_diastolic">Diastolic blood pressure</string>
+    <string name="metric_alt">ALT</string>
+    <string name="metric_ast">AST</string>
+    <string name="metric_serum_total_cholesterol">Total cholesterol</string>
+    <string name="metric_serum_uric_acid">Uric acid</string>
+    <string name="metric_sleep_duration">Sleep duration</string>
+    <string name="metric_daily_steps">Daily steps</string>
 
     <!-- Symbols. Not prose, so they stay untranslated. -->
     <string name="trend_glyph_up" translatable="false">↗</string>

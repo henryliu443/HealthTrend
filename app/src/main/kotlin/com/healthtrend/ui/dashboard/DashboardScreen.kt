@@ -504,6 +504,32 @@ private fun DashboardPreview() {
     }
 }
 
+/**
+ * The same dashboard in Chinese, to check that nothing falls back to a stored English name. The
+ * `locale` qualifier is what makes the bilingual result reviewable without a device: the app's own
+ * metric names must read 体重 / 总胆固醇, not Body weight / Total cholesterol.
+ */
+@Preview(name = "Dashboard · 中文", showBackground = true, locale = "zh-rCN")
+@Composable
+private fun DashboardChinesePreview() {
+    HealthTrendTheme(darkTheme = false) {
+        DashboardContent(
+            state = previewDashboardState(),
+            zoneId = ZoneId.of("Asia/Shanghai"),
+            onOpenMetric = {},
+            onOpenCompare = {},
+            onOpenNutrition = {},
+            onLoadDemoData = {},
+            onAddMetric = { _, _, _ -> },
+            onAddObservation = { _, _ -> },
+            onBuildExport = { null },
+            onExportResult = {},
+            onLanguageUnavailable = {},
+            onMessageShown = {},
+        )
+    }
+}
+
 @Preview(name = "Dashboard · empty", showBackground = true)
 @Composable
 private fun DashboardEmptyPreview() {

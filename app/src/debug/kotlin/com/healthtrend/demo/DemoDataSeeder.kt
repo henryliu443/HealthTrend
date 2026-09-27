@@ -14,10 +14,7 @@ import com.healthtrend.core.domain.nutrition.lookup.LookupTier
 import com.healthtrend.core.domain.nutrition.lookup.NutritionLookupRepository
 import com.healthtrend.core.domain.repository.MetricRepository
 import com.healthtrend.core.domain.repository.NutritionRepository
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import org.koin.core.context.GlobalContext
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import java.time.ZoneId
@@ -30,6 +27,10 @@ import kotlin.random.Random
  *
  * Registered through `platformExtraModules()` in `src/debug`, which has no counterpart in
  * `src/release`, so none of this code is reachable from a release artifact.
+ *
+ * Nothing calls [DemoDataInstaller.install] automatically. It runs only when the user asks for it
+ * from the dashboard's empty state, because an app that fills its own database with invented
+ * readings on first launch has already stopped being the user's app.
  */
 val demoModule: Module = module {
     single<DemoDataInstaller> {
@@ -42,19 +43,16 @@ val demoModule: Module = module {
     }
 }
 
-/** Seeds at process start so the very first launch already has something to look at. */
-fun seedIfEmptyOnStart(scope: CoroutineScope) {
-    val koin = GlobalContext.getOrNull() ?: return
-    scope.launch { koin.getOrNull<DemoDataInstaller>()?.install() }
-}
-
 /**
- * Fills an empty database with roughly three months of reviewable data.
+ * Fills an empty database with roughly three months of reviewable data — **on request only**.
  *
  * WHY THIS EXISTS: every screen is a data visualisation, and an empty database renders as an empty
- * screen — which makes the UI impossible to review. The data is **deterministic** (fixed [Random]
- * seed, offsets computed from "today"), so a screenshot taken today and one taken tomorrow differ
- * only in the day they end on.
+ * screen — which makes the UI impossible to review. It is therefore a review tool, not a default:
+ * it never runs unless the user presses the button, and it refuses to touch a database that already
+ * has anything in it.
+ *
+ * The data is **deterministic** (fixed [Random] seed, offsets computed from "today"), so a screenshot
+ * taken today and one taken tomorrow differ only in the day they end on.
  *
  * The foods are *not* invented: they are adopted through the same lookup pipeline the UI uses
  * (AGENTS.md §5.2 search → §5.3 save), so every nutrient figure in a debug build traces back to the

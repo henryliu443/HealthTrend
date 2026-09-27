@@ -57,12 +57,17 @@ internal fun nutrientName(nutrientId: String, storedName: String): String =
 /** The display name of a metric, preferring the localised nutrient name where there is one. */
 @Composable
 @ReadOnlyComposable
-internal fun metricDisplayName(metricId: String, storedName: String): String =
-    if (NutritionMetricIds.matches(metricId)) {
+internal fun metricDisplayName(metricId: String, storedName: String): String = when {
+    // Nutrients are projected into `metric_observations` as `nutrient_<id>` metrics (AGENTS.md §4.3),
+    // so a projected metric is named from the nutrient catalogue rather than from the name the
+    // projection happened to write.
+    NutritionMetricIds.matches(metricId) ->
         nutrientName(metricId.removePrefix(NutritionMetricIds.PREFIX), storedName)
-    } else {
-        storedName
-    }
+
+    // A metric the app itself seeds is named from the app's own table, so it reads correctly in
+    // either language. A user-created metric has an id this knows nothing about and keeps its name.
+    else -> builtInMetricNameRes(metricId)?.let { stringResource(it) } ?: storedName
+}
 
 /**
  * The display name of a metric.

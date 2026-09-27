@@ -50,6 +50,7 @@ class SavedFoodLookupProvider(
                         brand = food.brand,
                         defaultReferenceAmount = food.referenceAmount,
                         defaultReferenceUnit = food.referenceUnit,
+                        isCustom = food.isCustom,
                     )
                 }
         }

@@ -48,7 +48,7 @@
     <string name="dashboard_title">HealthTrend</string>
     <string name="dashboard_subtitle">本地优先 · 数据只保存在这台设备</string>
     <string name="dashboard_empty_title">还没有任何指标</string>
-    <string name="dashboard_empty_body">数据库是空的。可以加载一份演示数据，或手动添加一条记录。</string>
+    <string name="dashboard_empty_body">还没有记录。用 + 号添加一条记录；或者加载演示数据——那是几个月的虚构读数，只为了看图表长什么样。</string>
     <string name="dashboard_action_seed_demo">加载演示数据</string>
     <plurals name="dashboard_observation_count">
         <item quantity="other">%1$d 条记录</item>
@@ -56,7 +56,7 @@
     <string name="dashboard_latest_on">最近 %1$s</string>
     <string name="dashboard_action_compare">多指标对比</string>
     <string name="dashboard_action_nutrition">营养记录</string>
-    <string name="dashboard_action_export">导出数据</string>
+    <string name="dashboard_action_export">导出</string>
     <string name="dashboard_add_metric">新建指标</string>
     <string name="dashboard_new_metric_title">新建指标</string>
     <string name="dashboard_metric_name">指标名称</string>
@@ -196,4 +196,17 @@
     <string name="nutrient_vitamin_d">维生素 D</string>
     <string name="nutrient_vitamin_b12">维生素 B12</string>
     <string name="nutrient_folate">叶酸</string>
+
+    <!-- Metrics the app itself supplies — see values/strings.xml. -->
+    <string name="metric_body_weight">体重</string>
+    <string name="metric_body_fat_percent">体脂率</string>
+    <string name="metric_resting_heart_rate">静息心率</string>
+    <string name="metric_blood_pressure_systolic">收缩压</string>
+    <string name="metric_blood_pressure_diastolic">舒张压</string>
+    <string name="metric_alt">ALT</string>
+    <string name="metric_ast">AST</string>
+    <string name="metric_serum_total_cholesterol">总胆固醇</string>
+    <string name="metric_serum_uric_acid">尿酸</string>
+    <string name="metric_sleep_duration">睡眠时长</string>
+    <string name="metric_daily_steps">日步数</string>
 </resources>

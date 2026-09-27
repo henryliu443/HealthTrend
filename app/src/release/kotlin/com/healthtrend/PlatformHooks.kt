@@ -12,4 +12,5 @@ import org.koin.core.module.Module
 
 internal fun platformExtraModules(): List<Module> = emptyList()
 
+/** Nothing runs at startup in release; the debug hook is empty for the same reason. */
 internal fun installStartupHooks(scope: CoroutineScope) = Unit

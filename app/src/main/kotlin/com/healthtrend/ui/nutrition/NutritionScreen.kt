@@ -54,6 +54,7 @@ import com.healthtrend.core.domain.nutrition.lookup.FoodNutrientProfile
 import com.healthtrend.core.domain.nutrition.lookup.FoodRef
 import com.healthtrend.core.domain.nutrition.lookup.FoodSearchResult
 import com.healthtrend.core.domain.nutrition.lookup.LookupTier
+import com.healthtrend.ui.common.foodDisplayName
 import com.healthtrend.ui.common.labelRes
 import com.healthtrend.ui.common.needsConfirmation
 import com.healthtrend.ui.common.nutrientName
@@ -214,7 +215,7 @@ private fun NutritionContent(
             state.selectedFood?.let { selected ->
                 SectionCard(
                     title = stringResource(R.string.nutrition_estimate_title),
-                    subtitle = selected.food.name,
+                    subtitle = foodDisplayName(selected.food),
                 ) {
                     Text(
                         text = stringResource(
@@ -380,7 +381,7 @@ private fun ConfirmProfileDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text(profile.foodName, style = MaterialTheme.typography.titleMedium)
+                Text(foodDisplayName(profile), style = MaterialTheme.typography.titleMedium)
                 profile.sourceName?.let { source ->
                     Text(
                         text = stringResource(
@@ -531,7 +532,7 @@ private fun SearchResultRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = result.name,
+                text = foodDisplayName(result),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                 color = if (isSelected) {
@@ -582,7 +583,7 @@ private fun MealRowItem(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = row.food?.name ?: row.meal.foodId,
+                text = row.food?.let { foodDisplayName(it) } ?: row.meal.foodId,
                 style = MaterialTheme.typography.bodyLarge,
             )
             Text(
@@ -622,7 +623,7 @@ private fun LogMealDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(food.food.name, style = MaterialTheme.typography.titleMedium)
+                Text(foodDisplayName(food.food), style = MaterialTheme.typography.titleMedium)
                 Text(
                     text = stringResource(
                         R.string.nutrition_reference_line,
@@ -790,13 +791,16 @@ private fun NewFoodDialog(
 // --------------------------------------------------------------------------- previews
 
 private fun previewSearchResults(): List<FoodSearchResult> = listOf(
+    // A food the demo diary already adopted: still "mine", but an untouched copy, so it shows under
+    // its curated name — in Chinese, when the preview is rendered in Chinese.
     FoodSearchResult(
-        foodRef = FoodRef.of("saved", "demo-egg"),
+        foodRef = FoodRef.of("saved", "egg_whole_raw"),
         tier = LookupTier.PERSONAL,
-        name = "Egg",
+        name = "Egg (1 large, about 50 g)",
         brand = null,
-        defaultReferenceAmount = 1.0,
+        defaultReferenceAmount = 50.0,
         defaultReferenceUnit = "piece",
+        isCustom = false,
     ),
     FoodSearchResult(
         foodRef = FoodRef.of("bundled", "rice_cooked"),
@@ -818,17 +822,19 @@ private fun previewSearchResults(): List<FoodSearchResult> = listOf(
 
 private fun previewFood(): FoodWithNutrients = FoodWithNutrients(
     food = FoodItem(
-        id = "demo-rice",
+        // A real lexicon id, so the preview exercises the localised-name path rather than falling
+        // back to the stored English label.
+        id = "rice_cooked",
         name = "Cooked white rice",
         referenceAmount = 100.0,
         referenceUnit = "g",
         isCustom = false,
     ),
     nutrients = listOf(
-        FoodNutrientValue("demo-rice", "calories", 130.0),
-        FoodNutrientValue("demo-rice", "protein", 2.69),
-        FoodNutrientValue("demo-rice", "carbohydrates", 28.17),
-        FoodNutrientValue("demo-rice", "fat", 0.28),
+        FoodNutrientValue("rice_cooked", "calories", 130.0),
+        FoodNutrientValue("rice_cooked", "protein", 2.69),
+        FoodNutrientValue("rice_cooked", "carbohydrates", 28.17),
+        FoodNutrientValue("rice_cooked", "fat", 0.28),
     ),
 )
 
@@ -854,11 +860,11 @@ private fun previewNutritionState(zoneId: ZoneId): NutritionUiState {
     val dayStart = TimeKeys.startOfDayUtcMillis(Instant.parse("2026-06-18T06:00:00Z").toEpochMilli(), zoneId)
     val rice = previewFood().food
     val egg = FoodItem(
-        id = "demo-egg",
+        id = "egg_whole_raw",
         name = "Egg",
         referenceAmount = 1.0,
         referenceUnit = "piece",
-        isCustom = true,
+        isCustom = false,
     )
     return NutritionUiState(
         isLoading = false,
@@ -941,6 +947,38 @@ private fun NutritionConfirmPreview() {
     HealthTrendTheme(darkTheme = false) {
         NutritionContent(
             state = base.copy(pendingProfile = previewProfile()),
+            zoneId = zoneId,
+            onBack = {},
+            onPreviousDay = {},
+            onNextDay = {},
+            onToday = {},
+            onQueryChange = {},
+            onSelectResult = {},
+            onClearSelection = {},
+            onSelectMealType = {},
+            onLogFood = {},
+            onDeleteMeal = {},
+            onConfirmProfile = { _, _ -> },
+            onDismissProfile = {},
+            onCreateFood = { _, _, _, _ -> },
+            onMessageShown = {},
+        )
+    }
+}
+
+/**
+ * The same diary in Chinese. Food names come from the bundled lexicon's string resources, so a
+ * Chinese reader sees 米饭（熟） and 鸡蛋（1 个，约 50 g） rather than the English labels the rows are
+ * stored under.
+ */
+@Preview(name = "Nutrition · 中文", showBackground = true, heightDp = 1500, locale = "zh-rCN")
+@Composable
+private fun NutritionChinesePreview() {
+    val zoneId = ZoneId.of("Asia/Shanghai")
+    val state = remember { previewNutritionState(zoneId) }
+    HealthTrendTheme(darkTheme = false) {
+        NutritionContent(
+            state = state,
             zoneId = zoneId,
             onBack = {},
             onPreviousDay = {},

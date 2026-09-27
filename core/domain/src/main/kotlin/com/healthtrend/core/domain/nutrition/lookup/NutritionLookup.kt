@@ -57,6 +57,10 @@ data class FoodRef(val providerName: String, val localId: String) {
  *
  * Deliberately carries no nutrient values: a search returns many foods and only the one the user
  * picks needs its full profile fetched.
+ *
+ * [isCustom] answers "are these the user's own words?" — set when a food was created or corrected by
+ * hand. It matters for display: an untouched copy of a curated food may be shown under the curated
+ * name in the reader's language, while a food they edited must be quoted verbatim.
  */
 data class FoodSearchResult(
     val foodRef: FoodRef,
@@ -65,6 +69,7 @@ data class FoodSearchResult(
     val brand: String?,
     val defaultReferenceAmount: Double,
     val defaultReferenceUnit: String,
+    val isCustom: Boolean = false,
 )
 
 /**
