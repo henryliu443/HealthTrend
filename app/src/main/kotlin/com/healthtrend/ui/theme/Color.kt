@@ -2,58 +2,94 @@ package com.healthtrend.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// A deliberately small brand palette. Charts read a lot of `chart*` colours, so they are part of the
-// theme rather than being hard-coded in composables.
+// Light grey and black, on purpose, and no white anywhere.
+//
+// There are three greys for structure — a page, a slightly lighter card, and a shade for the things
+// that need to sit *on* a card (a selected chip, a text field) — plus black ink and one muted grey.
+// The only saturated colour outside the data is the red that means "error" or "this point was
+// flagged", so nothing in the chrome can imply a judgement about a reading: a green accent on a
+// falling weight would be the app taking a position it is not entitled to take (AGENTS.md §10.3).
 
-internal val Teal40 = Color(0xFF0F6E5C)
-internal val Teal80 = Color(0xFF6FD8C0)
-internal val Sand40 = Color(0xFF7A5900)
-internal val Sand80 = Color(0xFFECBF6B)
-internal val Violet40 = Color(0xFF4A5C92)
-internal val Violet80 = Color(0xFFB4C4FF)
+/** The page. */
+internal val Page = Color(0xFFEFEFF1)
 
-internal val Neutral10 = Color(0xFF101513)
-internal val Neutral95 = Color(0xFFEFF2F0)
-internal val Neutral99 = Color(0xFFF7FAF8)
-internal val Neutral20 = Color(0xFF2A312F)
-internal val Neutral90 = Color(0xFFDDE5E1)
+/** A card on the page: a step lighter, so a list gets its structure without a border on every row. */
+internal val Paper = Color(0xFFF7F7F8)
 
-/** Raw observation line. */
-internal val ChartRawLight = Color(0xFF0F6E5C)
-internal val ChartRawDark = Color(0xFF6FD8C0)
+/** Anything that sits on a card: selected chips, text fields, nested panels. */
+internal val Shade = Color(0xFFE4E4E7)
 
-/** Time-decayed EWMA overlay. */
-internal val ChartSmoothedLight = Color(0xFF8A5A00)
-internal val ChartSmoothedDark = Color(0xFFECBF6B)
+/** Hairlines. */
+internal val Line = Color(0xFFD2D2D6)
 
-/** Ordinary-least-squares trend line. */
-internal val ChartTrendLight = Color(0xFF4A5C92)
-internal val ChartTrendDark = Color(0xFFB4C4FF)
+/** Secondary text: labels, units, captions. Still readable, never competing with the numbers. */
+internal val Muted = Color(0xFF5C5C62)
 
-/** Points flagged by the anomaly detectors. */
-internal val ChartAnomalyLight = Color(0xFFB3261E)
-internal val ChartAnomalyDark = Color(0xFFFFB4AB)
+/** Ink. Text, the raw data line, filled buttons. */
+internal val Ink = Color(0xFF0A0A0A)
 
-/** Filled reference-range band. */
-internal val ChartBandLight = Color(0x1F0F6E5C)
-internal val ChartBandDark = Color(0x266FD8C0)
+// Dark mode is the same idea inverted: a black page, a raised dark grey card, light grey ink. Pure
+// white is avoided there too — at these sizes it glares.
+internal val Night = Color(0xFF0E0E10)
+internal val NightRaised = Color(0xFF1C1C1F)
+internal val NightShade = Color(0xFF2A2A2E)
+internal val NightLine = Color(0xFF3A3A40)
+internal val NightInk = Color(0xFFEDEDEF)
+internal val NightMuted = Color(0xFFA8A8B0)
+
+/** Error red. The only hue the chrome is allowed, because it carries meaning rather than taste. */
+internal val RedLight = Color(0xFFB3261E)
+internal val RedLightContainer = Color(0xFFF0DAD8)
+internal val OnRedLightContainer = Color(0xFF410E0B)
+internal val RedDark = Color(0xFFF2B8B5)
+internal val RedDarkContainer = Color(0xFF8C1D18)
+
+/** Raw observation line: the specimen itself, so it is drawn in ink. */
+internal val ChartRawLight = Ink
+internal val ChartRawDark = NightInk
+
+/** Time-decayed EWMA overlay: a grey fit behind the ink. Dark enough to clear 3:1 on a card. */
+internal val ChartSmoothedLight = Color(0xFF86868C)
+internal val ChartSmoothedDark = Color(0xFF7A7A82)
+
+/**
+ * Ordinary-least-squares trend line.
+ *
+ * The one data colour that is neither ink nor grey. A straight line fitted through the middle of the
+ * cloud is a different *kind* of claim from a measurement, and after the raw line, the fit and the
+ * flagged points have taken black, grey and red, a muted slate is what is left that still reads.
+ */
+internal val ChartTrendLight = Color(0xFF44567F)
+internal val ChartTrendDark = Color(0xFF9FB0E8)
+
+/** Points flagged by the anomaly detectors. Red, because it is the same "look here" as an error. */
+internal val ChartAnomalyLight = RedLight
+internal val ChartAnomalyDark = RedDark
+
+/** Filled reference-range band: a wash of ink rather than a colour, since it is a region not a series. */
+internal val ChartBandLight = Color(0x14000000)
+internal val ChartBandDark = Color(0x24FFFFFF)
 
 /**
  * Multi-metric comparison palette — the order is the series order, so a metric keeps its colour for
  * as long as it stays selected.
+ *
+ * Six series is beyond what greyscale can express, so this is the one place the palette stays
+ * colourful. The first entry is still black, which keeps a one- or two-metric comparison looking
+ * like the rest of the app.
  */
 internal val ComparePaletteLight = listOf(
-    Color(0xFF0F6E5C),
-    Color(0xFFB3261E),
-    Color(0xFF4A5C92),
-    Color(0xFF8A5A00),
-    Color(0xFF7A2E6E),
+    Ink,
+    RedLight,
+    ChartTrendLight,
+    Color(0xFF7A4E00),
+    Color(0xFF6E2A63),
     Color(0xFF1D6B8A),
 )
 internal val ComparePaletteDark = listOf(
-    Color(0xFF6FD8C0),
-    Color(0xFFFFB4AB),
-    Color(0xFFB4C4FF),
+    NightInk,
+    RedDark,
+    ChartTrendDark,
     Color(0xFFECBF6B),
     Color(0xFFF3B0E4),
     Color(0xFF8FD0F0),

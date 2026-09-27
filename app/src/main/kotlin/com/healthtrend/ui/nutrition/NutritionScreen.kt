@@ -534,11 +534,14 @@ private fun SearchResultRow(
             Text(
                 text = foodDisplayName(result),
                 style = MaterialTheme.typography.bodyLarge,
+                // Selection is emphasis, not hue: in a colourless palette there is no accent left to
+                // spend on it, and lightening the selected row would read backwards. Full-contrast
+                // ink against a muted label, plus the weight change, is the whole signal.
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                 color = if (isSelected) {
-                    MaterialTheme.colorScheme.primary
-                } else {
                     MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
                 },
                 modifier = Modifier.weight(1f),
             )

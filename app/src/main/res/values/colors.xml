@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
-      Launcher icon background. A fixed brand colour rather than a wallpaper-derived one: the mark is
-      white and has to stay legible, and the app deliberately does not use Material You for the same
-      reason (see ui/theme/Theme.kt).
+      Launcher icon background: near black, to match the app's light grey and black chrome. The mark is
+      a light silhouette and has to stay legible; the app deliberately does not use Material You for
+      the same reason (see ui/theme/Theme.kt).
     -->
-    <color name="ic_launcher_background">#0E5C4A</color>
+    <color name="ic_launcher_background">#1C1C1F</color>
 </resources>

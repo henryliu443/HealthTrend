@@ -10,52 +10,91 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
+/**
+ * Light grey and black, in both modes.
+ *
+ * The page is a light grey, cards step one shade lighter, and everything that sits on a card steps
+ * back down — so hierarchy comes from three greys rather than from borders. In dark mode the same
+ * three steps run from black upward. There is no white: at these sizes it glares, and the whole
+ * point of the palette is that the numbers are the only thing demanding attention.
+ *
+ * Two groups of roles are set that the app never names itself, because Material's defaults for them
+ * are tinted and would put a lavender cast back into a colourless app: `surfaceContainer*` (dialogs)
+ * and `inverseSurface` (snackbars).
+ */
 private val LightColors = lightColorScheme(
-    primary = Teal40,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFA8F2DC),
-    onPrimaryContainer = Color(0xFF00201A),
-    secondary = Violet40,
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFDCE1FF),
-    onSecondaryContainer = Color(0xFF001945),
-    tertiary = Sand40,
-    onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFFDEA6),
-    onTertiaryContainer = Color(0xFF271900),
-    background = Neutral99,
-    onBackground = Neutral10,
-    surface = Neutral99,
-    onSurface = Neutral10,
-    surfaceVariant = Neutral90,
-    onSurfaceVariant = Neutral20,
-    outline = Color(0xFF6F7976),
-    error = Color(0xFFB3261E),
-    onError = Color.White,
+    primary = Ink,
+    onPrimary = Paper,
+    primaryContainer = Shade,
+    onPrimaryContainer = Ink,
+    secondary = Muted,
+    onSecondary = Paper,
+    secondaryContainer = Shade,
+    onSecondaryContainer = Ink,
+    tertiary = Muted,
+    onTertiary = Paper,
+    tertiaryContainer = Shade,
+    onTertiaryContainer = Ink,
+    background = Page,
+    onBackground = Ink,
+    surface = Page,
+    onSurface = Ink,
+    // Cards: one step lighter than the page, which is what lets a long list of rows read without an
+    // outline around every one of them.
+    surfaceVariant = Paper,
+    onSurfaceVariant = Muted,
+    surfaceContainerLowest = Paper,
+    surfaceContainerLow = Color(0xFFF2F2F4),
+    surfaceContainer = Color(0xFFEAEAEC),
+    surfaceContainerHigh = Shade,
+    surfaceContainerHighest = Color(0xFFDDDDE1),
+    outline = Line,
+    outlineVariant = Shade,
+    error = RedLight,
+    onError = Paper,
+    errorContainer = RedLightContainer,
+    onErrorContainer = OnRedLightContainer,
+    // Snackbars: the one place an inverted surface is wanted.
+    inverseSurface = NightShade,
+    inverseOnSurface = NightInk,
+    inversePrimary = NightMuted,
+    scrim = Color(0xFF000000),
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Teal80,
-    onPrimary = Color(0xFF00382E),
-    primaryContainer = Color(0xFF005144),
-    onPrimaryContainer = Color(0xFFA8F2DC),
-    secondary = Violet80,
-    onSecondary = Color(0xFF1B2C60),
-    secondaryContainer = Color(0xFF324478),
-    onSecondaryContainer = Color(0xFFDCE1FF),
-    tertiary = Sand80,
-    onTertiary = Color(0xFF412D00),
-    tertiaryContainer = Color(0xFF5D4200),
-    onTertiaryContainer = Color(0xFFFFDEA6),
-    background = Neutral10,
-    onBackground = Neutral95,
-    surface = Neutral10,
-    onSurface = Neutral95,
-    surfaceVariant = Neutral20,
-    onSurfaceVariant = Neutral90,
-    outline = Color(0xFF899390),
-    error = Color(0xFFFFB4AB),
-    onError = Color(0xFF690005),
+    primary = NightInk,
+    onPrimary = Night,
+    primaryContainer = NightShade,
+    onPrimaryContainer = NightInk,
+    secondary = NightMuted,
+    onSecondary = Night,
+    secondaryContainer = NightShade,
+    onSecondaryContainer = NightInk,
+    tertiary = NightMuted,
+    onTertiary = Night,
+    tertiaryContainer = NightShade,
+    onTertiaryContainer = NightInk,
+    background = Night,
+    onBackground = NightInk,
+    surface = Night,
+    onSurface = NightInk,
+    surfaceVariant = NightRaised,
+    onSurfaceVariant = NightMuted,
+    surfaceContainerLowest = Color(0xFF08080A),
+    surfaceContainerLow = Color(0xFF141417),
+    surfaceContainer = NightRaised,
+    surfaceContainerHigh = NightShade,
+    surfaceContainerHighest = NightLine,
+    outline = NightLine,
+    outlineVariant = NightShade,
+    error = RedDark,
+    onError = Color(0xFF4A0F0C),
+    errorContainer = RedDarkContainer,
+    onErrorContainer = RedLightContainer,
+    inverseSurface = NightInk,
+    inverseOnSurface = Night,
+    inversePrimary = NightMuted,
+    scrim = Color(0xFF000000),
 )
 
 /**
