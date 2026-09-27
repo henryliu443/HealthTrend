@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What may leave the device, and how.
+
+  This app promises that health data stays on this device, but "this device" is not the same thing as
+  "this phone": a user replacing a handset reasonably expects their history to come along. So
+  device-to-device transfer is allowed and cloud backup is not — the local database is included in the
+  former and excluded from the latter. Anything on a server would contradict the app's own subtitle.
+
+  The deliberate way to move data anywhere else is the snapshot export in the dashboard.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="." />
+    </device-transfer>
+</data-extraction-rules>

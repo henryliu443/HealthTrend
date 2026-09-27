@@ -14,14 +14,12 @@
     <string name="action_add">Add</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_confirm">Confirm</string>
-    <string name="action_delete">Delete</string>
     <string name="action_save">Save</string>
     <string name="action_close">Close</string>
     <string name="action_back">Back</string>
     <string name="action_language">Language</string>
 
     <!-- Shared labels -->
-    <string name="label_loading">Loading…</string>
     <string name="label_undefined">—</string>
     <string name="label_sample_count">Samples</string>
 
@@ -32,7 +30,6 @@
     <string name="chart_legend_trend">OLS trend</string>
     <string name="chart_legend_anomaly">Flagged</string>
     <string name="chart_empty">No data in this range</string>
-    <string name="chart_axis_value">Value</string>
 
     <!-- Time ranges -->
     <string name="range_7d">7 days</string>
@@ -55,7 +52,10 @@
     <string name="dashboard_empty_title">No metrics yet</string>
     <string name="dashboard_empty_body">The database is empty. Load the demo data, or add a reading by hand.</string>
     <string name="dashboard_action_seed_demo">Load demo data</string>
-    <string name="dashboard_observation_count">%1$d readings</string>
+    <plurals name="dashboard_observation_count">
+        <item quantity="one">%1$d reading</item>
+        <item quantity="other">%1$d readings</item>
+    </plurals>
     <string name="dashboard_latest_on">Latest %1$s</string>
     <string name="dashboard_action_compare">Compare metrics</string>
     <string name="dashboard_action_nutrition">Food diary</string>
@@ -67,8 +67,7 @@
     <string name="dashboard_metric_concern">Watch for (optional)</string>
 
     <!-- Export (AGENTS.md §10.4: reading the database never writes to it) -->
-    <string name="export_file_name">healthtrend-%1$s.zip</string>
-    <string name="export_success">Exported to %1$s</string>
+    <string name="export_success">Export saved</string>
     <string name="export_failed">Export failed</string>
 
     <!-- Entry dialog -->
@@ -121,7 +120,7 @@
     <string name="compare_mode_minmax">Min–max</string>
     <string name="compare_mode_baseline">Baseline 100</string>
     <string name="compare_pick_metrics">Metrics to compare</string>
-    <string name="compare_selected">%1$d selected</string>
+    <string name="compare_selected">Selected: %1$d</string>
     <string name="compare_need_two">Select at least 2 metrics</string>
     <string name="compare_unavailable">%1$s cannot be normalised this way</string>
     <string name="compare_normalization_note">Normalisation is an in-memory display projection only; the stored observations are never rewritten.</string>

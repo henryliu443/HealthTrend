@@ -13,7 +13,11 @@ interface MealLogDao {
     @Query("SELECT * FROM meal_logs WHERE timestamp >= :from AND timestamp < :to ORDER BY timestamp ASC")
     fun observeRange(from: Long, to: Long): Flow<List<MealLogEntity>>
 
-    @Query("SELECT * FROM meal_logs WHERE id = :id LIMIT 1")
+        /** Whole-table read for export; ordered so two exports of the same data are identical. */
+    @Query("SELECT * FROM meal_logs ORDER BY timestamp ASC, id ASC")
+    suspend fun findAll(): List<MealLogEntity>
+
+@Query("SELECT * FROM meal_logs WHERE id = :id LIMIT 1")
     suspend fun findById(id: String): MealLogEntity?
 
     /**

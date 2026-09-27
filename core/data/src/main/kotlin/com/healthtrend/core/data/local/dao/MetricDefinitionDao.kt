@@ -10,7 +10,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface MetricDefinitionDao {
 
-    @Query("SELECT * FROM metric_definitions ORDER BY displayOrder ASC")
+        /** Whole-table read for export; ordered so two exports of the same data are identical. */
+    @Query("SELECT * FROM metric_definitions ORDER BY displayOrder ASC, id ASC")
+    suspend fun findAll(): List<MetricDefinitionEntity>
+
+@Query("SELECT * FROM metric_definitions ORDER BY displayOrder ASC")
     fun observeAll(): Flow<List<MetricDefinitionEntity>>
 
     @Query("SELECT * FROM metric_definitions WHERE id = :id LIMIT 1")

@@ -12,14 +12,12 @@
     <string name="action_add">添加</string>
     <string name="action_cancel">取消</string>
     <string name="action_confirm">确定</string>
-    <string name="action_delete">删除</string>
     <string name="action_save">保存</string>
     <string name="action_close">关闭</string>
     <string name="action_back">返回</string>
     <string name="action_language">语言</string>
 
     <!-- Shared labels -->
-    <string name="label_loading">加载中…</string>
     <string name="label_undefined">—</string>
     <string name="label_sample_count">样本数</string>
 
@@ -30,7 +28,6 @@
     <string name="chart_legend_trend">OLS 趋势</string>
     <string name="chart_legend_anomaly">偏离点</string>
     <string name="chart_empty">该时间范围内没有数据</string>
-    <string name="chart_axis_value">数轴</string>
 
     <!-- Time ranges -->
     <string name="range_7d">7 天</string>
@@ -53,7 +50,9 @@
     <string name="dashboard_empty_title">还没有任何指标</string>
     <string name="dashboard_empty_body">数据库是空的。可以加载一份演示数据，或手动添加一条记录。</string>
     <string name="dashboard_action_seed_demo">加载演示数据</string>
-    <string name="dashboard_observation_count">%1$d 条记录</string>
+    <plurals name="dashboard_observation_count">
+        <item quantity="other">%1$d 条记录</item>
+    </plurals>
     <string name="dashboard_latest_on">最近 %1$s</string>
     <string name="dashboard_action_compare">多指标对比</string>
     <string name="dashboard_action_nutrition">营养记录</string>
@@ -65,8 +64,7 @@
     <string name="dashboard_metric_concern">关注方向（可选）</string>
 
     <!-- Export (AGENTS.md §10.4: reading the database never writes to it) -->
-    <string name="export_file_name">healthtrend-%1$s.zip</string>
-    <string name="export_success">已导出到 %1$s</string>
+    <string name="export_success">已导出到所选位置</string>
     <string name="export_failed">导出失败</string>
 
     <!-- Entry dialog -->
@@ -119,7 +117,7 @@
     <string name="compare_mode_minmax">极差归一</string>
     <string name="compare_mode_baseline">基准 100</string>
     <string name="compare_pick_metrics">选择要对比的指标</string>
-    <string name="compare_selected">已选 %1$d 个</string>
+    <string name="compare_selected">已选：%1$d</string>
     <string name="compare_need_two">至少选择 2 个指标</string>
     <string name="compare_unavailable">%1$s 在该方式下无法归一化</string>
     <string name="compare_normalization_note">归一化只是内存中的展示投影，绝不回写原始观测（AGENTS.md §10.4）。</string>

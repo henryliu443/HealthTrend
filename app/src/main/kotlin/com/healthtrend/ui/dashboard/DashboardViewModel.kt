@@ -4,6 +4,8 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.healthtrend.R
+import com.healthtrend.core.data.export.DataExporter
+import com.healthtrend.core.data.export.ExportArchive
 import com.healthtrend.core.domain.model.MetricCategory
 import com.healthtrend.core.domain.model.MetricConcern
 import com.healthtrend.core.domain.model.MetricDataType
@@ -14,6 +16,7 @@ import com.healthtrend.core.domain.model.ObservationSource
 import com.healthtrend.core.domain.repository.MetricRepository
 import com.healthtrend.demo.DemoDataInstaller
 import com.healthtrend.ui.common.uiOrder
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -59,6 +62,7 @@ data class DashboardUiState(
  */
 class DashboardViewModel(
     private val metricRepository: MetricRepository,
+    private val dataExporter: DataExporter,
     private val demoDataInstaller: DemoDataInstaller?,
     private val nowMillis: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
@@ -165,6 +169,28 @@ class DashboardViewModel(
      */
     fun reportLanguageSettingsUnavailable() {
         message.value = R.string.language_unavailable
+    }
+
+    /**
+     * Builds the export archive.
+     *
+     * Suspends and returns the bytes rather than parking them in screen state: the UI awaits this,
+     * hands the suggested file name to the system picker, and only writes once the user has chosen a
+     * destination. A cancelled export must not leave a copy of the user's health history sitting in
+     * a ViewModel.
+     */
+    suspend fun buildExport(): ExportArchive? = try {
+        dataExporter.archive()
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (exception: Exception) {
+        message.value = R.string.export_failed
+        null
+    }
+
+    /** Reports how writing the archive to the chosen destination went. */
+    fun reportExportResult(success: Boolean) {
+        message.value = if (success) R.string.export_success else R.string.export_failed
     }
 
     private companion object {

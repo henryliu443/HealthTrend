@@ -13,7 +13,11 @@ interface FoodItemDao {
     @Query("SELECT * FROM food_items WHERE name LIKE '%' || :nameQuery || '%' ORDER BY name ASC")
     fun observeByName(nameQuery: String): Flow<List<FoodItemEntity>>
 
-    @Query("SELECT * FROM food_items WHERE id = :id LIMIT 1")
+        /** Whole-table read for export; ordered so two exports of the same data are identical. */
+    @Query("SELECT * FROM food_items ORDER BY name ASC, id ASC")
+    suspend fun findAll(): List<FoodItemEntity>
+
+@Query("SELECT * FROM food_items WHERE id = :id LIMIT 1")
     suspend fun findById(id: String): FoodItemEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

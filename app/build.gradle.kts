@@ -25,6 +25,9 @@ android {
 
     buildFeatures {
         compose = true
+        // Off by default since AGP 8. The export snapshot records `versionName` as the app version,
+        // which is the one place this app needs it and the reason it is switched back on.
+        buildConfig = true
     }
 
     compileOptions {

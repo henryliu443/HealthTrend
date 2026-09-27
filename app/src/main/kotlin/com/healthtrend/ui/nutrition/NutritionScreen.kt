@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -175,7 +176,11 @@ private fun NutritionContent(
 
             SectionCard(
                 title = stringResource(R.string.nutrition_search_title),
-                subtitle = stringResource(R.string.dashboard_observation_count, state.searchResults.size),
+                subtitle = pluralStringResource(
+                    R.plurals.dashboard_observation_count,
+                    state.searchResults.size,
+                    state.searchResults.size,
+                ),
             ) {
                 if (state.searchResults.isEmpty()) {
                     Text(

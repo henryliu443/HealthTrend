@@ -1,5 +1,7 @@
 package com.healthtrend.ui.dashboard
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,10 +29,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -38,6 +42,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.healthtrend.R
+import com.healthtrend.core.data.export.ExportArchive
 import com.healthtrend.core.domain.model.MetricCategory
 import com.healthtrend.core.domain.model.MetricConcern
 import com.healthtrend.core.domain.model.MetricDataType
@@ -50,6 +55,7 @@ import com.healthtrend.ui.components.SectionCard
 import com.healthtrend.ui.format.Formatters
 import com.healthtrend.ui.settings.openAppLanguageSettings
 import com.healthtrend.ui.theme.HealthTrendTheme
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import java.time.Instant
 import java.time.ZoneId
@@ -74,6 +80,8 @@ internal fun DashboardScreen(
         onLoadDemoData = viewModel::loadDemoData,
         onAddMetric = viewModel::addMetric,
         onAddObservation = viewModel::addObservation,
+        onBuildExport = viewModel::buildExport,
+        onExportResult = viewModel::reportExportResult,
         onLanguageUnavailable = viewModel::reportLanguageSettingsUnavailable,
         onMessageShown = viewModel::consumeMessage,
         modifier = modifier,
@@ -91,6 +99,8 @@ private fun DashboardContent(
     onLoadDemoData: () -> Unit,
     onAddMetric: (name: String, unit: String, concern: MetricConcern?) -> Unit,
     onAddObservation: (metricId: String, value: Double) -> Unit,
+    onBuildExport: suspend () -> ExportArchive?,
+    onExportResult: (success: Boolean) -> Unit,
     onLanguageUnavailable: () -> Unit,
     onMessageShown: () -> Unit,
     modifier: Modifier = Modifier,
@@ -108,6 +118,28 @@ private fun DashboardContent(
     var entryTarget by remember { mutableStateOf<MetricDefinition?>(null) }
 
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    // The archive waits here between "the user asked to export" and "the user picked a destination".
+    // It is deliberately not in the ViewModel: a cancelled export should leave no copy of a health
+    // history behind, and the write is the only thing the system picker gives us afterwards.
+    var pendingExport by remember { mutableStateOf<ExportArchive?>(null) }
+    val saveExport = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(EXPORT_MIME_TYPE),
+    ) { destination ->
+        val archive = pendingExport
+        pendingExport = null
+        if (archive == null) return@rememberLauncherForActivityResult
+        if (destination == null) return@rememberLauncherForActivityResult
+        val written = try {
+            context.contentResolver.openOutputStream(destination)?.use { stream ->
+                stream.write(archive.bytes)
+            } != null
+        } catch (exception: Exception) {
+            false
+        }
+        onExportResult(written)
+    }
 
     Scaffold(
         modifier = modifier,
@@ -115,6 +147,17 @@ private fun DashboardContent(
             TopAppBar(
                 title = { Text(stringResource(R.string.dashboard_title)) },
                 actions = {
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                val archive = onBuildExport() ?: return@launch
+                                pendingExport = archive
+                                saveExport.launch(archive.fileName)
+                            }
+                        },
+                    ) {
+                        Text(stringResource(R.string.dashboard_action_export))
+                    }
                     // No language picker of its own — see ui/settings/LanguageSettings.kt.
                     TextButton(
                         onClick = {
@@ -232,7 +275,11 @@ private fun MetricCardRow(
             val detail = card.latest?.let { latest ->
                 val day = Formatters.day(latest.timestampEpochMilli, zoneId)
                 stringResource(R.string.dashboard_latest_on, day) + " · " +
-                    stringResource(R.string.dashboard_observation_count, latest.sampleCount)
+                    pluralStringResource(
+                        R.plurals.dashboard_observation_count,
+                        latest.sampleCount,
+                        latest.sampleCount,
+                    )
             }
             if (detail != null) {
                 Text(
@@ -307,6 +354,9 @@ private fun NewMetricDialog(
         },
     )
 }
+
+/** `application/zip` — the archive a snapshot export produces. */
+private const val EXPORT_MIME_TYPE = "application/zip"
 
 /** `null` first, so "not stated" is the default and reads as the neutral option it is. */
 private val CONCERN_OPTIONS: List<MetricConcern?> = listOf(
@@ -446,6 +496,8 @@ private fun DashboardPreview() {
             onLoadDemoData = {},
             onAddMetric = { _, _, _ -> },
             onAddObservation = { _, _ -> },
+            onBuildExport = { null },
+            onExportResult = {},
             onLanguageUnavailable = {},
             onMessageShown = {},
         )
@@ -465,6 +517,8 @@ private fun DashboardEmptyPreview() {
             onLoadDemoData = {},
             onAddMetric = { _, _, _ -> },
             onAddObservation = { _, _ -> },
+            onBuildExport = { null },
+            onExportResult = {},
             onLanguageUnavailable = {},
             onMessageShown = {},
         )

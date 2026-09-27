@@ -1,5 +1,7 @@
 package com.healthtrend.di
 
+import com.healthtrend.BuildConfig
+import com.healthtrend.core.data.export.DataExporter
 import com.healthtrend.core.data.local.HealthTrendDatabase
 import com.healthtrend.core.data.nutrition.lexicon.BundledLexiconProvider
 import com.healthtrend.core.data.nutrition.lookup.NutritionLookupRepositoryImpl
@@ -38,6 +40,15 @@ val appModule: Module = module {
 
     single { NutritionProjectionService(database = get(), zoneId = get()) }
 
+    /** Reads the whole database into a portable snapshot (AGENTS.md §10.4: never writes to it). */
+    single {
+        DataExporter(
+            database = get(),
+            appVersion = BuildConfig.VERSION_NAME,
+            zoneId = get(),
+        )
+    }
+
     single<MetricRepository> {
         val database = get<HealthTrendDatabase>()
         MetricRepositoryImpl(database.metricDefinitionDao(), database.metricObservationDao())
@@ -70,6 +81,7 @@ val appModule: Module = module {
     viewModel {
         DashboardViewModel(
             metricRepository = get(),
+            dataExporter = get(),
             demoDataInstaller = getOrNull(),
         )
     }

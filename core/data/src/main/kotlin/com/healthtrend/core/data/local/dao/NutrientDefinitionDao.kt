@@ -13,6 +13,10 @@ interface NutrientDefinitionDao {
     @Query("SELECT * FROM nutrient_definitions ORDER BY displayOrder ASC")
     fun observeAll(): Flow<List<NutrientDefinitionEntity>>
 
+    /** Whole-table read for export; ordered so two exports of the same data are identical. */
+    @Query("SELECT * FROM nutrient_definitions ORDER BY displayOrder ASC, id ASC")
+    suspend fun findAll(): List<NutrientDefinitionEntity>
+
     @Query("SELECT * FROM nutrient_definitions WHERE id = :id LIMIT 1")
     suspend fun findById(id: String): NutrientDefinitionEntity?
 

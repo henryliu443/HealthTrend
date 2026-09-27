@@ -76,4 +76,8 @@ interface MetricObservationDao {
 
     @Query("DELETE FROM metric_observations WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    /** Whole-table read for export; ordered so two exports of the same data are identical. */
+    @Query("SELECT * FROM metric_observations ORDER BY metric_id ASC, timestamp ASC, id ASC")
+    suspend fun findAll(): List<MetricObservationEntity>
 }
